@@ -1,0 +1,7 @@
+{
+  "port": 8080,
+  "log_level": "info",
+  "host": "localhost",
+  "timeout_seconds": 30,
+  "max_connections": 100
+}
