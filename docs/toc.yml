@@ -1,0 +1,27 @@
+# Home page
+- name: Home
+  href: index.md
+
+# Getting started section
+- name: Getting Started
+  items:
+    - name: Installation
+      href: installation.md
+    - name: Quick Start
+      href: quickstart.md
+
+# User guide
+- name: User Guide
+  items:
+    - name: Command Reference
+      href: commands-reference.md
+    - name: Agent Integration
+      href: agent-integration.md
+
+# Advanced topics
+- name: Advanced
+  items:
+    - name: MCP Server
+      href: mcp-server.md
+    - name: Local Development
+      href: local-development.md
