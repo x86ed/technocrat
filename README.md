@@ -7,6 +7,7 @@ Technocrat is a Model Context Protocol (MCP) server implementation that provides
 ## Features
 
 ### Spec-Driven Development
+
 - **Project Initialization**: Bootstrap new projects with templates and agent configurations
 - **Feature Management**: Create and manage feature branches with structured specifications
 - **Multi-Agent Support**: Works with 13+ AI agents (Claude, Copilot, Gemini, Cursor, Windsurf, and more)
@@ -14,12 +15,14 @@ Technocrat is a Model Context Protocol (MCP) server implementation that provides
 - **Agent Context Updates**: Automatically sync project information to AI agent configuration files
 
 ### MCP Server
+
 - **Full MCP Protocol**: Complete implementation of Model Context Protocol with HTTP endpoints
 - **Tools API**: Extensible tool system for executing operations
 - **Resources API**: Access to server resources and information
 - **Prompts API**: Pre-built prompts for common development tasks
 
 ### Developer Experience
+
 - **Pure Go**: Written entirely in Go, using Cobra for CLI - single binary, no dependencies
 - **Cross-platform**: Works on Linux, macOS, and Windows
 - **Modern Build**: Uses `go generate` for streamlined builds
@@ -272,12 +275,15 @@ The server implements the following MCP endpoints:
 ## Available Tools
 
 ### echo
+
 Echoes back the input message.
 
 **Parameters:**
+
 - `message` (string, required): The message to echo
 
 **Example:**
+
 ```bash
 curl -X POST http://localhost:8080/mcp/v1/tools/call \
   -H "Content-Type: application/json" \
@@ -285,9 +291,11 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 ```
 
 ### system_info
+
 Returns basic system information about the server.
 
 **Example:**
+
 ```bash
 curl -X POST http://localhost:8080/mcp/v1/tools/call \
   -H "Content-Type: application/json" \
@@ -324,7 +332,7 @@ technocrat/
 │   ├── tasks-template.md
 │   ├── checklist-template.md
 │   └── commands/            # Agent command templates
-│       ├── specify.md
+│       ├── spec.md
 │       ├── plan.md
 │       ├── tasks.md
 │       └── ...

@@ -1,6 +1,6 @@
 # Technocrat
 
-*Spec-Driven Development with AI Agent Integration*
+## *Spec-Driven Development with AI Agent Integration*
 
 **A comprehensive framework that combines structured feature development with AI coding assistants through the Model Context Protocol.**
 
@@ -17,7 +17,7 @@ Built entirely in Go, Technocrat delivers a single-binary solution that works se
 
 Spec-Driven Development emphasizes creating clear, executable specifications before implementation. This approach:
 
-- **Increases clarity** by defining the "_what_" before the "_how_"
+- **Increases clarity** by defining the "*what*" before the "*how*"
 - **Improves AI collaboration** by providing structured context that AI agents can understand
 - **Enables better planning** through multi-step refinement rather than one-shot generation
 - **Maintains consistency** across features with templates and conventions
@@ -72,15 +72,19 @@ Each step maintains consistency through templates and automated tooling, while g
 ## Use Cases
 
 ### Greenfield Development
+
 Start new projects with structured specifications, automated branching, and AI-ready context from day one.
 
 ### Feature Addition
+
 Add new capabilities to existing projects with consistent workflows and clear documentation.
 
 ### Team Onboarding
+
 Bring new team members (human or AI) up to speed quickly with standardized processes and well-maintained context.
 
 ### Multi-Agent Workflows
+
 Work with different AI assistants on different parts of your codebase while maintaining consistent project understanding.
 
 ## Architecture
@@ -100,27 +104,31 @@ Ready to get started? Check out the [Quick Start Guide](quickstart.md) to create
 Our research and experimentation focus on:
 
 ### Technology Independence
+
 - Create applications using diverse technology stacks
 - Validate the hypothesis that Spec-Driven Development is a process not tied to specific technologies, programming languages, or frameworks
 
 ### Enterprise Constraints
+
 - Demonstrate mission-critical application development
 - Incorporate organizational constraints (cloud providers, tech stacks, engineering practices)
 - Support enterprise design systems and compliance requirements
 
 ### User-Centric Development
+
 - Build applications for different user cohorts and preferences
 - Support various development approaches (from vibe-coding to AI-native development)
 
 ### Creative & Iterative Processes
+
 - Validate the concept of parallel implementation exploration
 - Provide robust iterative feature development workflows
 - Extend processes to handle upgrades and modernization tasks
 
 ## Contributing
 
-Please see our [Contributing Guide](https://github.com/github/spec-kit/blob/main/CONTRIBUTING.md) for information on how to contribute to this project.
+Please see our [Contributing Guide](https://github.com/x86ed/technocrat/blob/main/CONTRIBUTING.md) for information on how to contribute to this project.
 
 ## Support
 
-For support, please check our [Support Guide](https://github.com/github/spec-kit/blob/main/SUPPORT.md) or open an issue on GitHub.
+For support, please open an issue on [GitHub](https://github.com/x86ed/technocrat/issues).
