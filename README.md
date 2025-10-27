@@ -107,52 +107,43 @@ just test
 
 ## Usage
 
-### Command Overview
+### Command-Line Interface
 
 ```bash
-# Show all available commands
+# Show available commands
 technocrat --help
 
-# Show version information
+# Show version
 technocrat version
 
-# Start the MCP server
+# Start the MCP server (default port 8080)
 technocrat server
 
-# Install the server
-technocrat install
-
-# Uninstall the server
-technocrat uninstall
-```
-
-### Starting the Server
-
-```bash
-# Start with default settings (port 8080)
-technocrat server
-
-# Specify a custom port
+# Start with custom port
 technocrat server --port 9090
-technocrat server -p 9090
-```
 
-### Installing and Managing
+# Check prerequisites for Spec-Driven Development
+technocrat check-prerequisites
 
-```bash
-# Install the server to /usr/local/bin
+# Check prerequisites with JSON output
+technocrat check-prerequisites --json
+
+# Get feature paths only
+technocrat check-prerequisites --paths-only
+
+# Check implementation prerequisites (requires tasks.md)
+technocrat check-prerequisites --require-tasks --include-tasks
+
+# Install the binary to system
 sudo technocrat install
 
 # Install with systemd service (Linux)
 sudo technocrat install --systemd
 
-# Install to custom directory
-technocrat install --dir ~/.local/bin
-
-# Uninstall the server
+# Uninstall
 sudo technocrat uninstall
 
-# Uninstall and remove systemd service
+# Uninstall including systemd service
 sudo technocrat uninstall --systemd
 ```
 

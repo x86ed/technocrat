@@ -18,9 +18,7 @@ var rootCmd = &cobra.Command{
 	Long: `Technocrat is a Model Context Protocol (MCP) server implementation
 with built-in installation and management capabilities.
 
-Use 'technocrat server' to run the MCP server.
-Use 'technocrat install' to install the server.
-Use 'technocrat uninstall' to remove the server.`,
+Use 'technocrat server' to run the MCP server.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

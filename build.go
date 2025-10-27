@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -22,16 +21,13 @@ var (
 
 func main() {
 	var (
-		buildCmd     = flag.Bool("build", false, "Build the binary")
-		installCmd   = flag.Bool("install", false, "Install the binary")
-		uninstallCmd = flag.Bool("uninstall", false, "Uninstall the binary")
-		cleanCmd     = flag.Bool("clean", false, "Clean build artifacts")
-		testCmd      = flag.Bool("test", false, "Run tests")
-		fmtCmd       = flag.Bool("fmt", false, "Format code")
-		vetCmd       = flag.Bool("vet", false, "Run go vet")
-		depsCmd      = flag.Bool("deps", false, "Download and tidy dependencies")
-		allCmd       = flag.Bool("all", false, "Build everything")
-		installPath  = flag.String("install-dir", installDir, "Installation directory")
+		buildCmd = flag.Bool("build", false, "Build the binary")
+		cleanCmd = flag.Bool("clean", false, "Clean build artifacts")
+		testCmd  = flag.Bool("test", false, "Run tests")
+		fmtCmd   = flag.Bool("fmt", false, "Format code")
+		vetCmd   = flag.Bool("vet", false, "Run go vet")
+		depsCmd  = flag.Bool("deps", false, "Download and tidy dependencies")
+		allCmd   = flag.Bool("all", false, "Build everything")
 	)
 
 	flag.Parse()
@@ -63,17 +59,6 @@ func main() {
 
 	if *testCmd {
 		test()
-		return
-	}
-
-	if *uninstallCmd {
-		uninstall(*installPath)
-		return
-	}
-
-	if *installCmd {
-		build()
-		install(*installPath)
 		return
 	}
 
@@ -140,41 +125,6 @@ func build() {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func install(installPath string) {
-	info("Installing binary to %s...", installPath)
-
-	if err := os.MkdirAll(installPath, 0755); err != nil {
-		fatal("Failed to create install directory: %v", err)
-	}
-
-	src := filepath.Join(buildDir, binary)
-	dest := filepath.Join(installPath, binary)
-
-	// Read source file
-	data, err := os.ReadFile(src)
-	if err != nil {
-		fatal("Failed to read binary: %v", err)
-	}
-
-	// Write to destination
-	if err := os.WriteFile(dest, data, 0755); err != nil {
-		fatal("Failed to install binary: %v", err)
-	}
-
-	success("Installation complete! Run 'technocrat --help' to get started.")
-}
-
-func uninstall(installPath string) {
-	info("Removing binary from %s...", installPath)
-
-	dest := filepath.Join(installPath, binary)
-	if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
-		fatal("Failed to remove binary: %v", err)
-	}
-
-	success("Uninstallation complete!")
 }
 
 func clean() {
@@ -264,12 +214,4 @@ func success(format string, args ...interface{}) {
 func fatal(format string, args ...interface{}) {
 	fmt.Printf("\033[0;31m[ERROR]\033[0m "+format+"\n", args...)
 	os.Exit(1)
-}
-
-func getOS() string {
-	return runtime.GOOS
-}
-
-func getArch() string {
-	return runtime.GOARCH
 }
