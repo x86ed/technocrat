@@ -538,8 +538,7 @@ func TestOutputFeatureJSON(t *testing.T) {
 			BranchName: "001-test-feature",
 			SpecFile:   "/path/to/specs/001-test-feature/spec.md",
 			FeatureNum: "001",
-			FeatureDir: "/path/to/specs/001-test-feature",
-			EnvVarSet:  true,
+			HasGit:     true,
 		}
 
 		// Capture stdout
@@ -586,6 +585,9 @@ func TestOutputFeatureJSON(t *testing.T) {
 		if !strings.Contains(output, "FEATURE_NUM") {
 			t.Error("JSON output should contain FEATURE_NUM field")
 		}
+		if !strings.Contains(output, "HAS_GIT") {
+			t.Error("JSON output should contain HAS_GIT field")
+		}
 	})
 }
 
@@ -596,8 +598,7 @@ func TestOutputFeatureText(t *testing.T) {
 			BranchName: "001-test-feature",
 			SpecFile:   "/path/to/specs/001-test-feature/spec.md",
 			FeatureNum: "001",
-			FeatureDir: "/path/to/specs/001-test-feature",
-			EnvVarSet:  true,
+			HasGit:     true,
 		}
 
 		// Capture stdout
@@ -622,7 +623,8 @@ func TestOutputFeatureText(t *testing.T) {
 			"BRANCH_NAME: 001-test-feature",
 			"SPEC_FILE: /path/to/specs/001-test-feature/spec.md",
 			"FEATURE_NUM: 001",
-			"SET_FEATURE environment variable set to: 001-test-feature",
+			"HAS_GIT: true",
+			"TCHNCRT_FEATURE environment variable set to: 001-test-feature",
 		}
 
 		for _, expected := range expectedStrings {

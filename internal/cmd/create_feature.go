@@ -22,8 +22,7 @@ type FeatureInfo struct {
 	BranchName string `json:"BRANCH_NAME"`
 	SpecFile   string `json:"SPEC_FILE"`
 	FeatureNum string `json:"FEATURE_NUM"`
-	FeatureDir string `json:"FEATURE_DIR,omitempty"`
-	EnvVarSet  bool   `json:"ENV_VAR_SET,omitempty"`
+	HasGit     bool   `json:"HAS_GIT"`
 }
 
 // createFeatureCmd represents the create-feature command
@@ -38,7 +37,7 @@ This command:
 - Creates a feature directory in specs/XXX-feature-name
 - Creates a git branch (if git is available)
 - Copies the spec template if it exists
-- Sets the SET_FEATURE environment variable
+- Sets the TCHNCRT_FEATURE environment variable
 
 Feature branches follow the naming convention: XXX-feature-name
 where XXX is a zero-padded 3-digit number.`,
@@ -55,14 +54,14 @@ func init() {
 func runCreateFeature(cmd *cobra.Command, args []string) error {
 	featureDescription := strings.Join(args, " ")
 
+	// Check if we have git first
+	hasGitRepo := hasGit()
+
 	// Find repository root
 	repoRoot, err := findRepoRootForFeature()
 	if err != nil {
 		return fmt.Errorf("could not determine repository root: %w", err)
 	}
-
-	// Check if we have git
-	hasGitRepo := hasGit()
 
 	// Ensure specs directory exists
 	specsDir := filepath.Join(repoRoot, "specs")
@@ -95,7 +94,7 @@ func runCreateFeature(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to create git branch: %w", err)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "[specify] Warning: Git repository not detected; skipped branch creation for %s\n", branchName)
+		fmt.Fprintf(os.Stderr, "[tchncrt] Warning: Git repository not detected; skipped branch creation for %s\n", branchName)
 	}
 
 	// Copy template if it exists
@@ -106,15 +105,14 @@ func runCreateFeature(cmd *cobra.Command, args []string) error {
 	}
 
 	// Set environment variable (note: this only affects this process and its children)
-	os.Setenv("SPECIFY_FEATURE", branchName)
+	os.Setenv("TCHNCRT_FEATURE", branchName)
 
 	// Output results
 	info := FeatureInfo{
 		BranchName: branchName,
 		SpecFile:   specFile,
 		FeatureNum: featureNum,
-		FeatureDir: featureDir,
-		EnvVarSet:  true,
+		HasGit:     hasGitRepo,
 	}
 
 	if jsonOutput {
@@ -177,7 +175,8 @@ func findHighestFeatureNumber(specsDir string) (int, error) {
 		return 0, fmt.Errorf("failed to read specs directory: %w", err)
 	}
 
-	// Regular expression to match feature numbers at the start of directory names
+	// Regular expression to match one or more digits at the start of directory names
+	// This matches the behavior of both shell (^[0-9]\+) and PowerShell (^(\d{3}))
 	re := regexp.MustCompile(`^(\d+)`)
 
 	for _, entry := range entries {
@@ -270,6 +269,11 @@ func outputFeatureText(info FeatureInfo) error {
 	fmt.Printf("BRANCH_NAME: %s\n", info.BranchName)
 	fmt.Printf("SPEC_FILE: %s\n", info.SpecFile)
 	fmt.Printf("FEATURE_NUM: %s\n", info.FeatureNum)
-	fmt.Printf("SET_FEATURE environment variable set to: %s\n", info.BranchName)
+	if info.HasGit {
+		fmt.Printf("HAS_GIT: true\n")
+	} else {
+		fmt.Printf("HAS_GIT: false\n")
+	}
+	fmt.Printf("TCHNCRT_FEATURE environment variable set to: %s\n", info.BranchName)
 	return nil
 }

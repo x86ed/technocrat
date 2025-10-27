@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"technocrat/internal/tchncrt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +42,14 @@ func init() {
 }
 
 func runCheckPrerequisites(cmd *cobra.Command, args []string) error {
-	// Get feature paths
-	paths, err := tchncrt.GetFeaturePaths()
+	// Get feature paths using common functionality
+	paths, err := getFeaturePaths("")
 	if err != nil {
 		return fmt.Errorf("failed to get feature paths: %w", err)
 	}
 
 	// Validate feature branch
-	if err := tchncrt.CheckFeatureBranch(paths.CurrentBranch, paths.HasGit); err != nil {
+	if err := checkFeatureBranch(paths.CurrentBranch, paths.HasGit); err != nil {
 		return err
 	}
 
@@ -78,7 +76,7 @@ func runCheckPrerequisites(cmd *cobra.Command, args []string) error {
 	return outputText(paths, docs)
 }
 
-func validatePrerequisites(paths *tchncrt.FeaturePaths) error {
+func validatePrerequisites(paths *FeaturePaths) error {
 	// Check feature directory exists
 	if _, err := os.Stat(paths.FeatureDir); os.IsNotExist(err) {
 		return fmt.Errorf("feature directory not found: %s\nRun /tchncrt.spec first to create the feature structure", paths.FeatureDir)
@@ -99,7 +97,7 @@ func validatePrerequisites(paths *tchncrt.FeaturePaths) error {
 	return nil
 }
 
-func getAvailableDocs(paths *tchncrt.FeaturePaths) []string {
+func getAvailableDocs(paths *FeaturePaths) []string {
 	var docs []string
 
 	// Check optional documents
@@ -147,7 +145,7 @@ func dirHasFiles(path string) bool {
 	return len(entries) > 0
 }
 
-func outputPathsJSON(paths *tchncrt.FeaturePaths) error {
+func outputPathsJSON(paths *FeaturePaths) error {
 	output := map[string]string{
 		"REPO_ROOT":    paths.RepoRoot,
 		"BRANCH":       paths.CurrentBranch,
@@ -162,7 +160,7 @@ func outputPathsJSON(paths *tchncrt.FeaturePaths) error {
 	return encoder.Encode(output)
 }
 
-func outputPathsText(paths *tchncrt.FeaturePaths) error {
+func outputPathsText(paths *FeaturePaths) error {
 	fmt.Printf("REPO_ROOT: %s\n", paths.RepoRoot)
 	fmt.Printf("BRANCH: %s\n", paths.CurrentBranch)
 	fmt.Printf("FEATURE_DIR: %s\n", paths.FeatureDir)
@@ -172,7 +170,7 @@ func outputPathsText(paths *tchncrt.FeaturePaths) error {
 	return nil
 }
 
-func outputJSON(paths *tchncrt.FeaturePaths, docs []string) error {
+func outputJSON(paths *FeaturePaths, docs []string) error {
 	output := map[string]interface{}{
 		"FEATURE_DIR":    paths.FeatureDir,
 		"AVAILABLE_DOCS": docs,
@@ -183,7 +181,7 @@ func outputJSON(paths *tchncrt.FeaturePaths, docs []string) error {
 	return encoder.Encode(output)
 }
 
-func outputText(paths *tchncrt.FeaturePaths, docs []string) error {
+func outputText(paths *FeaturePaths, docs []string) error {
 	fmt.Printf("FEATURE_DIR:%s\n", paths.FeatureDir)
 	fmt.Println("AVAILABLE_DOCS:")
 

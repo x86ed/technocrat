@@ -193,8 +193,8 @@ func getCurrentBranch(setFeature string) (string, error) {
 		return setFeature, nil
 	}
 
-	// Check environment variable
-	if envFeature := os.Getenv("SET_FEATURE"); envFeature != "" {
+	// Check environment variable (TCHNCRT_FEATURE for cross-platform compatibility)
+	if envFeature := os.Getenv("TCHNCRT_FEATURE"); envFeature != "" {
 		return envFeature, nil
 	}
 
@@ -252,7 +252,7 @@ func hasGit() bool {
 func checkFeatureBranch(branch string, hasGitRepo bool) error {
 	// For non-git repos, just warn
 	if !hasGitRepo {
-		fmt.Fprintf(os.Stderr, "[set] Warning: Git repository not detected; skipped branch validation\n")
+		fmt.Fprintf(os.Stderr, "[tchncrt] Warning: Git repository not detected; skipped branch validation\n")
 		return nil
 	}
 
