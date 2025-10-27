@@ -943,8 +943,8 @@ Test implementation
 
 		// Execute command for Gemini
 		cmd := &cobra.Command{
-			Use:   "update-agent-context",
-			RunE:  runUpdateAgentContext,
+			Use:  "update-agent-context",
+			RunE: runUpdateAgentContext,
 		}
 		cmd.SetArgs([]string{"gemini"})
 
@@ -967,12 +967,12 @@ Test implementation
 
 	t.Run("error when plan.md missing", func(t *testing.T) {
 		tmpDir2 := t.TempDir()
-		
+
 		// Initialize git repo
 		cmd := exec.Command("git", "init")
 		cmd.Dir = tmpDir2
 		cmd.Run()
-		
+
 		cmd = exec.Command("git", "config", "user.email", "test@example.com")
 		cmd.Dir = tmpDir2
 		cmd.Run()
@@ -1018,12 +1018,12 @@ Test implementation
 
 	t.Run("error when template missing", func(t *testing.T) {
 		tmpDir3 := t.TempDir()
-		
+
 		// Initialize git repo
 		cmd := exec.Command("git", "init")
 		cmd.Dir = tmpDir3
 		cmd.Run()
-		
+
 		cmd = exec.Command("git", "config", "user.email", "test@example.com")
 		cmd.Dir = tmpDir3
 		cmd.Run()
