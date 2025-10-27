@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	version    = "dev"
+	version    = "0.2.0"
 	commit     = "unknown"
 	buildDir   = "bin"
 	binary     = "technocrat"
