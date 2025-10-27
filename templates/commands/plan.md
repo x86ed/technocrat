@@ -1,11 +1,7 @@
 ---
 description: Execute the implementation planning workflow using the plan template to generate design artifacts.
-scripts:
-  sh: scripts/bash/setup-plan.sh --json
-  ps: scripts/powershell/setup-plan.ps1 -Json
-agent_scripts:
-  sh: scripts/bash/update-agent-context.sh __AGENT__
-  ps: scripts/powershell/update-agent-context.ps1 -AgentType __AGENT__
+command: technocrat setup-plan --json
+agent_command: technocrat update-agent-context __AGENT__
 ---
 
 # Plan
@@ -20,7 +16,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-1. **Setup**: Run `{SCRIPT}` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+1. **Setup**: Run `technocrat setup-plan --json` from repo root and parse JSON for FEATURE_SPEC, IMPL_PLAN, SPECS_DIR, BRANCH.
 
 2. **Load context**: Read FEATURE_SPEC and `/memory/constitution.md`. Load IMPL_PLAN template (already copied).
 
@@ -75,11 +71,11 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Output OpenAPI/GraphQL schema to `/contracts/`
 
 3. **Agent context update**:
-   - Run `{AGENT_SCRIPT}`
-   - These scripts detect which AI agent is in use
-   - Update the appropriate agent-specific context file
-   - Add only new technology from current plan
-   - Preserve manual additions between markers
+   - Run `technocrat update-agent-context __AGENT__`
+   - This command detects which AI agent is in use
+   - Updates the appropriate agent-specific context file
+   - Adds only new technology from current plan
+   - Preserves manual additions between markers
 
 **Output**: data-model.md, /contracts/*, quickstart.md, agent-specific file
 

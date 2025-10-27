@@ -20,7 +20,7 @@ type SetupPlanOutput struct {
 	ImplPlan    string `json:"IMPL_PLAN"`
 	SpecsDir    string `json:"SPECS_DIR"`
 	Branch      string `json:"BRANCH"`
-	HasGit      string `json:"HAS_GIT"`
+	HasGit      bool   `json:"HAS_GIT"`
 }
 
 // setupPlanCmd represents the setup-plan command
@@ -75,7 +75,7 @@ func runSetupPlan(cmd *cobra.Command, args []string) error {
 		ImplPlan:    paths.ImplPlan,
 		SpecsDir:    paths.FeatureDir,
 		Branch:      paths.CurrentBranch,
-		HasGit:      formatBool(paths.HasGit),
+		HasGit:      paths.HasGit,
 	}
 
 	if setupPlanJSON {
@@ -93,19 +93,16 @@ func copyPlanTemplate(templatePath, destPath string) error {
 		if err := copyFile(templatePath, destPath); err != nil {
 			return fmt.Errorf("failed to copy template: %w", err)
 		}
-		fmt.Fprintf(os.Stderr, "Copied plan template to %s\n", destPath)
+		fmt.Printf("Copied plan template to %s\n", destPath)
 	} else {
 		// Template doesn't exist, create empty file
 		fmt.Fprintf(os.Stderr, "Warning: Plan template not found at %s\n", templatePath)
-
-		// Create a basic plan file if it doesn't exist
-		if _, err := os.Stat(destPath); os.IsNotExist(err) {
-			file, err := os.Create(destPath)
-			if err != nil {
-				return fmt.Errorf("failed to create plan file: %w", err)
-			}
-			file.Close()
+		// Create a basic plan file (always create/overwrite like shell scripts)
+		file, err := os.Create(destPath)
+		if err != nil {
+			return fmt.Errorf("failed to create plan file: %w", err)
 		}
+		file.Close()
 	}
 
 	return nil
@@ -147,7 +144,6 @@ func formatBool(b bool) string {
 // outputSetupPlanJSON outputs the result in JSON format
 func outputSetupPlanJSON(output SetupPlanOutput) error {
 	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(output); err != nil {
 		return fmt.Errorf("failed to encode JSON: %w", err)
 	}
@@ -160,6 +156,6 @@ func outputSetupPlanText(output SetupPlanOutput) error {
 	fmt.Printf("IMPL_PLAN: %s\n", output.ImplPlan)
 	fmt.Printf("SPECS_DIR: %s\n", output.SpecsDir)
 	fmt.Printf("BRANCH: %s\n", output.Branch)
-	fmt.Printf("HAS_GIT: %s\n", output.HasGit)
+	fmt.Printf("HAS_GIT: %s\n", formatBool(output.HasGit))
 	return nil
 }

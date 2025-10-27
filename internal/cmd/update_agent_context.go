@@ -83,6 +83,23 @@ func init() {
 	rootCmd.AddCommand(updateAgentContextCmd)
 }
 
+// Logging helper functions for consistent output
+func logInfo(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "INFO: "+format+"\n", args...)
+}
+
+func logSuccess(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "✓ "+format+"\n", args...)
+}
+
+func logWarning(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "WARNING: "+format+"\n", args...)
+}
+
+func logError(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, "ERROR: "+format+"\n", args...)
+}
+
 func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
 	// Get feature paths
 	paths, err := getFeaturePaths("")
@@ -95,15 +112,34 @@ func runUpdateAgentContext(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to determine current feature")
 	}
 
+	logInfo("=== Updating agent context files for feature %s ===", paths.CurrentBranch)
+
 	// Check if plan.md exists
 	if _, err := os.Stat(paths.ImplPlan); os.IsNotExist(err) {
-		return fmt.Errorf("no plan.md found at %s\nMake sure you're working on a feature with a corresponding spec directory", paths.ImplPlan)
+		return fmt.Errorf("no plan.md found at %s\n\nMake sure you're working on a feature with a corresponding spec directory.\nYou may need to run 'technocrat setup-plan' first", paths.ImplPlan)
 	}
 
 	// Parse plan data
+	logInfo("Parsing plan data from %s", paths.ImplPlan)
 	planData, err := parsePlanData(paths.ImplPlan)
 	if err != nil {
 		return fmt.Errorf("failed to parse plan data: %w", err)
+	}
+
+	// Log what we found
+	if planData.Language != "" {
+		logInfo("Found language: %s", planData.Language)
+	} else {
+		logWarning("No language information found in plan")
+	}
+	if planData.Framework != "" {
+		logInfo("Found framework: %s", planData.Framework)
+	}
+	if planData.Database != "" && planData.Database != "N/A" {
+		logInfo("Found database: %s", planData.Database)
+	}
+	if planData.ProjectType != "" {
+		logInfo("Found project type: %s", planData.ProjectType)
 	}
 
 	// Determine which agent to update
@@ -249,7 +285,7 @@ func updateAllExistingAgents(paths *FeaturePaths, planData *PlanData) error {
 
 	// If no agent files exist, create a default Claude file
 	if !foundAgent {
-		fmt.Fprintln(os.Stderr, "No existing agent files found, creating default Claude file...")
+		logInfo("No existing agent files found, creating default Claude file...")
 		config := getAgentFileConfig(paths.RepoRoot, AgentClaude)
 		if err := updateAgentFile(config, paths, planData); err != nil {
 			return fmt.Errorf("failed to create default Claude file: %w", err)
@@ -261,7 +297,7 @@ func updateAllExistingAgents(paths *FeaturePaths, planData *PlanData) error {
 
 // updateAgentFile updates or creates an agent file
 func updateAgentFile(config AgentFileConfig, paths *FeaturePaths, planData *PlanData) error {
-	fmt.Fprintf(os.Stderr, "Updating %s context file: %s\n", config.Name, config.Path)
+	logInfo("Updating %s context file: %s", config.Name, config.Path)
 
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(config.Path)
@@ -284,14 +320,28 @@ func createNewAgentFile(config AgentFileConfig, paths *FeaturePaths, planData *P
 	templatePath := filepath.Join(paths.RepoRoot, ".tchncrt", "templates", "agent-file-template.md")
 
 	// Check if template exists
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
+	info, err := os.Stat(templatePath)
+	if os.IsNotExist(err) {
 		return fmt.Errorf("template not found at %s", templatePath)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to stat template file: %w", err)
+	}
+
+	// Check if template is readable
+	if info.Mode().Perm()&0400 == 0 {
+		return fmt.Errorf("template file is not readable: %s", templatePath)
 	}
 
 	// Read template
 	content, err := os.ReadFile(templatePath)
 	if err != nil {
 		return fmt.Errorf("failed to read template: %w", err)
+	}
+
+	// Warn if not in a git repository
+	if !paths.HasGit {
+		logWarning("Git repository not detected; skipped branch validation")
 	}
 
 	// Replace placeholders
@@ -333,12 +383,29 @@ func createNewAgentFile(config AgentFileConfig, paths *FeaturePaths, planData *P
 	}
 	text = strings.ReplaceAll(text, "[LAST 3 FEATURES AND WHAT THEY ADDED]", recentChange)
 
-	// Write file
-	if err := os.WriteFile(config.Path, []byte(text), 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	// Write to temporary file first for atomic update
+	tmpFile, err := os.CreateTemp(filepath.Dir(config.Path), ".agent-update-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath) // Clean up temp file if we fail
+
+	if _, err := tmpFile.WriteString(text); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write temp file: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "✓ Created new %s context file\n", config.Name)
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Atomically move temp file to target
+	if err := os.Rename(tmpPath, config.Path); err != nil {
+		return fmt.Errorf("failed to move temp file to target: %w", err)
+	}
+
+	logSuccess("Created new %s context file", config.Name)
 	return nil
 }
 
@@ -440,13 +507,30 @@ func updateExistingAgentFile(config AgentFileConfig, paths *FeaturePaths, planDa
 		result = append(result, newTechEntries...)
 	}
 
-	// Write updated file
+	// Write to temporary file first for atomic update
+	tmpFile, err := os.CreateTemp(filepath.Dir(config.Path), ".agent-update-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath) // Clean up temp file if we fail
+
 	updatedContent := strings.Join(result, "\n")
-	if err := os.WriteFile(config.Path, []byte(updatedContent), 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	if _, err := tmpFile.WriteString(updatedContent); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("failed to write temp file: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "✓ Updated existing %s context file\n", config.Name)
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	// Atomically move temp file to target
+	if err := os.Rename(tmpPath, config.Path); err != nil {
+		return fmt.Errorf("failed to move temp file to target: %w", err)
+	}
+
+	logSuccess("Updated existing %s context file", config.Name)
 	return nil
 }
 
@@ -483,7 +567,8 @@ func getLanguageConventions(lang string) string {
 
 // printUpdateSummary prints a summary of changes
 func printUpdateSummary(planData *PlanData) {
-	fmt.Fprintln(os.Stderr, "\nSummary of changes:")
+	fmt.Fprintln(os.Stderr, "")
+	logInfo("Summary of changes:")
 
 	if planData.Language != "" {
 		fmt.Fprintf(os.Stderr, "  - Added language: %s\n", planData.Language)
@@ -495,5 +580,6 @@ func printUpdateSummary(planData *PlanData) {
 		fmt.Fprintf(os.Stderr, "  - Added database: %s\n", planData.Database)
 	}
 
-	fmt.Fprintln(os.Stderr, "\n✓ Agent context update completed successfully")
+	fmt.Fprintln(os.Stderr, "")
+	logInfo("Usage: technocrat update-agent-context [claude|gemini|copilot|cursor|qwen|opencode|codex|windsurf|kilocode|auggie|roo|codebuddy|q]")
 }

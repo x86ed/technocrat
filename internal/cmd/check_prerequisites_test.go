@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"technocrat/internal/tchncrt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -55,14 +53,14 @@ func createSimpleTestStructure(tmpDir string) error {
 	}
 
 	// Create and checkout a feature branch
-	cmd = exec.Command("git", "checkout", "-b", "feature/test-feature")
+	cmd = exec.Command("git", "checkout", "-b", "001-test-feature")
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 
-	// Create .tchncrt feature structure
-	featureDir := filepath.Join(tmpDir, ".tchncrt", "features", "test-feature")
+	// Create specs feature structure
+	featureDir := filepath.Join(tmpDir, "specs", "001-test-feature")
 	if err := os.MkdirAll(featureDir, 0755); err != nil {
 		return err
 	}
@@ -97,14 +95,14 @@ Test feature
 }
 
 // Helper function to create a temporary feature structure
-func createTestFeatureStructure(t *testing.T, includeFiles map[string]bool) (*tchncrt.FeaturePaths, func()) {
+func createTestFeatureStructure(t *testing.T, includeFiles map[string]bool) (*FeaturePaths, func()) {
 	t.Helper()
 
 	// Create temporary directory
 	tmpDir := t.TempDir()
 
 	// Create feature directory structure
-	featureDir := filepath.Join(tmpDir, ".tchncrt", "features", "test-feature")
+	featureDir := filepath.Join(tmpDir, "specs", "001-test-feature")
 	if err := os.MkdirAll(featureDir, 0755); err != nil {
 		t.Fatalf("Failed to create feature directory: %v", err)
 	}
@@ -146,9 +144,9 @@ func createTestFeatureStructure(t *testing.T, includeFiles map[string]bool) (*tc
 	}
 
 	// Build FeaturePaths
-	paths := &tchncrt.FeaturePaths{
+	paths := &FeaturePaths{
 		RepoRoot:      tmpDir,
-		CurrentBranch: "test-feature",
+		CurrentBranch: "001-test-feature",
 		HasGit:        false,
 		FeatureDir:    featureDir,
 		FeatureSpec:   filepath.Join(featureDir, "spec.md"),
@@ -475,13 +473,13 @@ func TestDirHasFiles(t *testing.T) {
 }
 
 func TestOutputPathsJSON(t *testing.T) {
-	paths := &tchncrt.FeaturePaths{
+	paths := &FeaturePaths{
 		RepoRoot:      "/test/repo",
-		CurrentBranch: "test-branch",
-		FeatureDir:    "/test/repo/.tchncrt/features/test-feature",
-		FeatureSpec:   "/test/repo/.tchncrt/features/test-feature/spec.md",
-		ImplPlan:      "/test/repo/.tchncrt/features/test-feature/plan.md",
-		Tasks:         "/test/repo/.tchncrt/features/test-feature/tasks.md",
+		CurrentBranch: "001-test-branch",
+		FeatureDir:    "/test/repo/specs/001-test-branch",
+		FeatureSpec:   "/test/repo/specs/001-test-branch/spec.md",
+		ImplPlan:      "/test/repo/specs/001-test-branch/plan.md",
+		Tasks:         "/test/repo/specs/001-test-branch/tasks.md",
 	}
 
 	// Capture stdout
@@ -511,11 +509,11 @@ func TestOutputPathsJSON(t *testing.T) {
 	// Verify expected fields
 	expected := map[string]string{
 		"REPO_ROOT":    "/test/repo",
-		"BRANCH":       "test-branch",
-		"FEATURE_DIR":  "/test/repo/.tchncrt/features/test-feature",
-		"FEATURE_SPEC": "/test/repo/.tchncrt/features/test-feature/spec.md",
-		"IMPL_PLAN":    "/test/repo/.tchncrt/features/test-feature/plan.md",
-		"TASKS":        "/test/repo/.tchncrt/features/test-feature/tasks.md",
+		"BRANCH":       "001-test-branch",
+		"FEATURE_DIR":  "/test/repo/specs/001-test-branch",
+		"FEATURE_SPEC": "/test/repo/specs/001-test-branch/spec.md",
+		"IMPL_PLAN":    "/test/repo/specs/001-test-branch/plan.md",
+		"TASKS":        "/test/repo/specs/001-test-branch/tasks.md",
 	}
 
 	for key, want := range expected {
@@ -531,13 +529,13 @@ func TestOutputPathsJSON(t *testing.T) {
 }
 
 func TestOutputPathsText(t *testing.T) {
-	paths := &tchncrt.FeaturePaths{
+	paths := &FeaturePaths{
 		RepoRoot:      "/test/repo",
-		CurrentBranch: "test-branch",
-		FeatureDir:    "/test/repo/.tchncrt/features/test-feature",
-		FeatureSpec:   "/test/repo/.tchncrt/features/test-feature/spec.md",
-		ImplPlan:      "/test/repo/.tchncrt/features/test-feature/plan.md",
-		Tasks:         "/test/repo/.tchncrt/features/test-feature/tasks.md",
+		CurrentBranch: "001-test-branch",
+		FeatureDir:    "/test/repo/specs/001-test-branch",
+		FeatureSpec:   "/test/repo/specs/001-test-branch/spec.md",
+		ImplPlan:      "/test/repo/specs/001-test-branch/plan.md",
+		Tasks:         "/test/repo/specs/001-test-branch/tasks.md",
 	}
 
 	// Capture stdout
@@ -561,11 +559,11 @@ func TestOutputPathsText(t *testing.T) {
 	// Verify expected lines
 	expectedLines := []string{
 		"REPO_ROOT: /test/repo",
-		"BRANCH: test-branch",
-		"FEATURE_DIR: /test/repo/.tchncrt/features/test-feature",
-		"FEATURE_SPEC: /test/repo/.tchncrt/features/test-feature/spec.md",
-		"IMPL_PLAN: /test/repo/.tchncrt/features/test-feature/plan.md",
-		"TASKS: /test/repo/.tchncrt/features/test-feature/tasks.md",
+		"BRANCH: 001-test-branch",
+		"FEATURE_DIR: /test/repo/specs/001-test-branch",
+		"FEATURE_SPEC: /test/repo/specs/001-test-branch/spec.md",
+		"IMPL_PLAN: /test/repo/specs/001-test-branch/plan.md",
+		"TASKS: /test/repo/specs/001-test-branch/tasks.md",
 	}
 
 	for _, expected := range expectedLines {
@@ -576,8 +574,8 @@ func TestOutputPathsText(t *testing.T) {
 }
 
 func TestOutputJSON(t *testing.T) {
-	paths := &tchncrt.FeaturePaths{
-		FeatureDir: "/test/repo/.tchncrt/features/test-feature",
+	paths := &FeaturePaths{
+		FeatureDir: "/test/repo/specs/001-test-branch",
 	}
 
 	docs := []string{"research.md", "data-model.md", "contracts/"}
@@ -610,12 +608,10 @@ func TestOutputJSON(t *testing.T) {
 	featureDir, ok := result["FEATURE_DIR"].(string)
 	if !ok {
 		t.Errorf("outputJSON() FEATURE_DIR is not a string")
-	} else if featureDir != "/test/repo/.tchncrt/features/test-feature" {
+	} else if featureDir != "/test/repo/specs/001-test-branch" {
 		t.Errorf("outputJSON() FEATURE_DIR = %q, want %q",
-			featureDir, "/test/repo/.tchncrt/features/test-feature")
-	}
-
-	// Verify AVAILABLE_DOCS
+			featureDir, "/test/repo/specs/001-test-branch")
+	} // Verify AVAILABLE_DOCS
 	availableDocs, ok := result["AVAILABLE_DOCS"].([]interface{})
 	if !ok {
 		t.Fatalf("outputJSON() AVAILABLE_DOCS is not an array")
@@ -997,8 +993,8 @@ func TestRunCheckPrerequisites(t *testing.T) {
 				os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("test"), 0644)
 				exec.Command("git", "-C", tmpDir, "add", ".").Run()
 				exec.Command("git", "-C", tmpDir, "commit", "-m", "init").Run()
-				exec.Command("git", "-C", tmpDir, "checkout", "-b", "feature/test").Run()
-				// Don't create .tchncrt/features directory at all
+				exec.Command("git", "-C", tmpDir, "checkout", "-b", "001-test-feature").Run()
+				// Don't create specs/001-test-feature directory at all
 				return tmpDir
 			},
 			pathsOnly:   false,
@@ -1017,9 +1013,9 @@ func TestRunCheckPrerequisites(t *testing.T) {
 				os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("test"), 0644)
 				exec.Command("git", "-C", tmpDir, "add", ".").Run()
 				exec.Command("git", "-C", tmpDir, "commit", "-m", "init").Run()
-				exec.Command("git", "-C", tmpDir, "checkout", "-b", "feature/test").Run()
-				// Create .tchncrt structure but not plan.md
-				featureDir := filepath.Join(tmpDir, ".tchncrt", "features", "test")
+				exec.Command("git", "-C", tmpDir, "checkout", "-b", "001-test-feature").Run()
+				// Create specs structure but not plan.md
+				featureDir := filepath.Join(tmpDir, "specs", "001-test-feature")
 				os.MkdirAll(featureDir, 0755)
 				// Don't create plan.md
 				return tmpDir

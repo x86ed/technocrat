@@ -121,9 +121,9 @@ func TestGetCurrentBranch(t *testing.T) {
 		}
 	})
 
-	t.Run("with SET_FEATURE environment variable", func(t *testing.T) {
-		os.Setenv("SET_FEATURE", "002-env-feature")
-		defer os.Unsetenv("SET_FEATURE")
+	t.Run("with TCHNCRT_FEATURE environment variable", func(t *testing.T) {
+		os.Setenv("TCHNCRT_FEATURE", "002-env-feature")
+		defer os.Unsetenv("TCHNCRT_FEATURE")
 
 		branch, err := getCurrentBranch("")
 		if err != nil {
