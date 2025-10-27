@@ -157,8 +157,8 @@ func outputPathsJSON(paths *tchncrt.FeaturePaths) error {
 		"TASKS":        paths.Tasks,
 	}
 
+	// Output compact JSON (no indentation) to match shell scripts
 	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
 	return encoder.Encode(output)
 }
 
@@ -196,9 +196,6 @@ func outputText(paths *tchncrt.FeaturePaths, docs []string) error {
 	if includeTasks {
 		checkFile(paths.Tasks, "tasks.md")
 	}
-
-	// Suppress unused variable warning - docs is used for JSON output
-	_ = docs
 
 	return nil
 }

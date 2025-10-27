@@ -336,8 +336,8 @@ func TestExtractZipWithStats(t *testing.T) {
 
 	// Add some test files
 	files := map[string]string{
-		"root-dir/file1.txt": "content1",
-		"root-dir/file2.txt": "content2",
+		"root-dir/file1.txt":     "content1",
+		"root-dir/file2.txt":     "content2",
 		"root-dir/sub/file3.txt": "content3",
 	}
 
