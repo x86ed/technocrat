@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -264,5 +266,185 @@ func (s *Server) respondJSON(w http.ResponseWriter, status int, data interface{}
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
+	}
+}
+
+// StdioServer represents the MCP server using stdio transport
+type StdioServer struct {
+	handler *Handler
+}
+
+// NewStdioServer creates a new MCP server instance for stdio transport
+func NewStdioServer() *StdioServer {
+	handler := NewHandler()
+	return &StdioServer{
+		handler: handler,
+	}
+}
+
+// Start starts the MCP server in stdio mode
+func (s *StdioServer) Start() error {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	// Handle interrupt signals for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		log.Println("Shutting down MCP server...")
+		os.Exit(0)
+	}()
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		var request map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &request); err != nil {
+			log.Printf("Error parsing request: %v", err)
+			continue
+		}
+
+		response := s.handleStdioRequest(request)
+
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			log.Printf("Error marshaling response: %v", err)
+			continue
+		}
+
+		fmt.Println(string(responseJSON))
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading from stdin: %w", err)
+	}
+
+	return nil
+}
+
+// handleStdioRequest handles a single MCP request via stdio
+func (s *StdioServer) handleStdioRequest(request map[string]interface{}) map[string]interface{} {
+	// Extract request ID for JSON-RPC 2.0 compliance
+	id := request["id"]
+
+	method, ok := request["method"].(string)
+	if !ok {
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"error": map[string]interface{}{
+				"code":    -32600,
+				"message": "Invalid request: missing method",
+			},
+		}
+	}
+
+	switch method {
+	case "initialize":
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result": map[string]interface{}{
+				"protocolVersion": "2024-11-05",
+				"serverInfo": map[string]interface{}{
+					"name":    "technocrat",
+					"version": "0.5.1",
+				},
+				"capabilities": map[string]interface{}{
+					"tools":     map[string]interface{}{},
+					"resources": map[string]interface{}{},
+					"prompts":   map[string]interface{}{},
+				},
+			},
+		}
+	case "tools/list":
+		tools := s.handler.ListTools()
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result": map[string]interface{}{
+				"tools": tools,
+			},
+		}
+	case "resources/list":
+		resources := s.handler.ListResources()
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result": map[string]interface{}{
+				"resources": resources,
+			},
+		}
+	case "prompts/list":
+		prompts := s.handler.ListPrompts()
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result": map[string]interface{}{
+				"prompts": prompts,
+			},
+		}
+	case "prompts/get":
+		params, ok := request["params"].(map[string]interface{})
+		if !ok {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32602,
+					"message": "Invalid params",
+				},
+			}
+		}
+
+		name, ok := params["name"].(string)
+		if !ok {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32602,
+					"message": "Missing prompt name",
+				},
+			}
+		}
+
+		// Extract arguments if provided
+		var args map[string]interface{}
+		if argsInterface, exists := params["arguments"]; exists {
+			if argsMap, ok := argsInterface.(map[string]interface{}); ok {
+				args = argsMap
+			}
+		}
+
+		prompt, err := s.handler.GetPrompt(name, args)
+		if err != nil {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32603,
+					"message": fmt.Sprintf("Internal error: %v", err),
+				},
+			}
+		}
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result":  prompt,
+		}
+	default:
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"error": map[string]interface{}{
+				"code":    -32601,
+				"message": fmt.Sprintf("Method not found: %s", method),
+			},
+		}
 	}
 }

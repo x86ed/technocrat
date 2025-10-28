@@ -67,26 +67,56 @@ func detectVSCode() Editor {
 		Transport: Stdio,
 	}
 
-	// Try to find VS Code executable
-	var cmd *exec.Cmd
+	// Try to find VS Code executable or application
+	var found bool
+	var versionCmd *exec.Cmd
+
 	switch runtime.GOOS {
 	case "darwin":
-		cmd = exec.Command("which", "code")
+		// First try the command line tool
+		if cmd := exec.Command("which", "code"); cmd != nil {
+			if output, err := cmd.Output(); err == nil && len(output) > 0 {
+				found = true
+				versionCmd = exec.Command("code", "--version")
+			}
+		}
+
+		// If not found, check for the application bundle
+		if !found {
+			appPath := "/Applications/Visual Studio Code.app"
+			if _, err := os.Stat(appPath); err == nil {
+				found = true
+				// Use the full path to the code binary inside the app bundle
+				codePath := filepath.Join(appPath, "Contents", "Resources", "app", "bin", "code")
+				versionCmd = exec.Command(codePath, "--version")
+			}
+		}
 	case "windows":
-		cmd = exec.Command("where", "code")
+		if cmd := exec.Command("where", "code"); cmd != nil {
+			if output, err := cmd.Output(); err == nil && len(output) > 0 {
+				found = true
+				versionCmd = exec.Command("code", "--version")
+			}
+		}
 	default: // linux
-		cmd = exec.Command("which", "code")
+		if cmd := exec.Command("which", "code"); cmd != nil {
+			if output, err := cmd.Output(); err == nil && len(output) > 0 {
+				found = true
+				versionCmd = exec.Command("code", "--version")
+			}
+		}
 	}
 
-	if output, err := cmd.Output(); err == nil && len(output) > 0 {
+	if found {
 		editor.Installed = true
 
-		// Get version
-		versionCmd := exec.Command("code", "--version")
-		if versionOutput, err := versionCmd.Output(); err == nil {
-			lines := strings.Split(string(versionOutput), "\n")
-			if len(lines) > 0 {
-				editor.Version = strings.TrimSpace(lines[0])
+		// Get version if possible
+		if versionCmd != nil {
+			if versionOutput, err := versionCmd.Output(); err == nil {
+				lines := strings.Split(string(versionOutput), "\n")
+				if len(lines) > 0 {
+					editor.Version = strings.TrimSpace(lines[0])
+				}
 			}
 		}
 

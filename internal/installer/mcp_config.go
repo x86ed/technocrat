@@ -57,16 +57,16 @@ func InstallMCPConfig(ed editor.Editor, projectPath string) error {
 	default:
 		return fmt.Errorf("unsupported editor: %s", ed.Name)
 	}
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	// Verify the configuration was written successfully
 	if !IsMCPConfigured(ed, projectPath) {
 		return fmt.Errorf("MCP configuration verification failed for %s", ed.Name)
 	}
-	
+
 	return nil
 }
 
@@ -98,7 +98,7 @@ func installVSCodeMCP(projectPath string) error {
 	mcpServers := map[string]interface{}{
 		"technocrat": map[string]interface{}{
 			"command": technocratPath,
-			"args":    []string{"server"},
+			"args":    []string{"server", "--port", "8080"},
 		},
 	}
 
@@ -151,7 +151,7 @@ func installClaudeMCP(configDir string) error {
 
 	mcpServers["technocrat"] = map[string]interface{}{
 		"command": technocratPath,
-		"args":    []string{"server"},
+		"args":    []string{"server", "--stdio"},
 	}
 
 	config["mcpServers"] = mcpServers

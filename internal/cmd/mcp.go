@@ -25,7 +25,7 @@ This command:
 	RunE: runCheckMCP,
 }
 
-// configureMcpCmd represents the configure-mcp command  
+// configureMcpCmd represents the configure-mcp command
 var configureMcpCmd = &cobra.Command{
 	Use:   "configure-mcp",
 	Short: "Configure MCP server for specific editors",
@@ -40,7 +40,7 @@ want to add MCP support to additional editors later.`,
 func init() {
 	rootCmd.AddCommand(checkMcpCmd)
 	rootCmd.AddCommand(configureMcpCmd)
-	
+
 	// Add flags for configure-mcp
 	configureMcpCmd.Flags().StringSlice("editors", nil, "Specific editors to configure (e.g., --editors claude,vscode)")
 	configureMcpCmd.Flags().Bool("all", false, "Configure all detected editors")
@@ -56,13 +56,13 @@ func runCheckMCP(cmd *cobra.Command, args []string) error {
 	// Detect available editors
 	fmt.Println("🔍 Detecting editors with MCP support...")
 	editors := editor.DetectEditors()
-	
+
 	if len(editors) == 0 {
 		fmt.Println("❌ No compatible editors found")
 		fmt.Println("\nSupported editors:")
 		fmt.Println("  • VS Code (GitHub Copilot)")
 		fmt.Println("  • Claude Desktop")
-		fmt.Println("  • Cursor")  
+		fmt.Println("  • Cursor")
 		fmt.Println("  • Amazon Q Developer")
 		fmt.Println("  • Windsurf")
 		return nil
@@ -74,27 +74,27 @@ func runCheckMCP(cmd *cobra.Command, args []string) error {
 	allConfigured := true
 	for _, ed := range editors {
 		fmt.Printf("📝 %s:\n", ed.Name)
-		
+
 		configPath := installer.GetMCPConfigPath(ed, projectPath)
 		if configPath == "" {
 			fmt.Printf("   ❌ No config path available\n")
 			allConfigured = false
 			continue
 		}
-		
+
 		fmt.Printf("   📁 Config file: %s\n", configPath)
-		
+
 		// Check if file exists
 		if _, err := os.Stat(configPath); os.IsNotExist(err) {
 			fmt.Printf("   ❌ Config file does not exist\n")
 			allConfigured = false
 			continue
 		}
-		
+
 		// Check if technocrat is configured
 		if installer.IsMCPConfigured(ed, projectPath) {
 			fmt.Printf("   ✅ Technocrat MCP server is configured\n")
-			
+
 			// Show the actual configuration
 			if data, err := os.ReadFile(configPath); err == nil {
 				var config map[string]interface{}
@@ -108,7 +108,7 @@ func runCheckMCP(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println()
 	}
-	
+
 	if allConfigured {
 		fmt.Println("🎉 All detected editors are properly configured!")
 		fmt.Println("\nNext steps:")
@@ -128,7 +128,7 @@ func runConfigureMCP(cmd *cobra.Command, args []string) error {
 	// Get flags
 	editorNames, _ := cmd.Flags().GetStringSlice("editors")
 	configureAll, _ := cmd.Flags().GetBool("all")
-	
+
 	// Get current directory as project path
 	projectPath, err := os.Getwd()
 	if err != nil {
@@ -143,7 +143,7 @@ func runConfigureMCP(cmd *cobra.Command, args []string) error {
 
 	// Determine which editors to configure
 	var editorsToConfig []editor.Editor
-	
+
 	if configureAll {
 		editorsToConfig = allEditors
 	} else if len(editorNames) > 0 {
@@ -167,7 +167,7 @@ func runConfigureMCP(cmd *cobra.Command, args []string) error {
 				editorMap["windsurf"] = ed
 			}
 		}
-		
+
 		for _, name := range editorNames {
 			if ed, exists := editorMap[name]; exists {
 				editorsToConfig = append(editorsToConfig, ed)
@@ -186,10 +186,10 @@ func runConfigureMCP(cmd *cobra.Command, args []string) error {
 			fmt.Printf("   %d. %s (%s)\n", i+1, ed.Name, status)
 		}
 		fmt.Print("\nEnter numbers (comma-separated) or 'all': ")
-		
+
 		var input string
 		fmt.Scanln(&input)
-		
+
 		if input == "all" {
 			editorsToConfig = allEditors
 		} else {
@@ -204,18 +204,18 @@ func runConfigureMCP(cmd *cobra.Command, args []string) error {
 
 	// Configure each selected editor
 	fmt.Printf("\n🔧 Configuring MCP for %d editor(s)...\n\n", len(editorsToConfig))
-	
+
 	successCount := 0
 	for _, ed := range editorsToConfig {
 		fmt.Printf("📝 Configuring %s...\n", ed.Name)
-		
+
 		if err := installer.InstallMCPConfig(ed, projectPath); err != nil {
 			fmt.Printf("   ❌ Failed: %v\n", err)
 		} else {
 			fmt.Printf("   ✅ Successfully configured\n")
 			successCount++
 		}
-		
+
 		configPath := installer.GetMCPConfigPath(ed, projectPath)
 		if configPath != "" {
 			fmt.Printf("   📁 Config saved to: %s\n", configPath)

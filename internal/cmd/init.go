@@ -1179,7 +1179,7 @@ func configureMCPForEditors(projectPath string, tracker *ui.StepTracker) error {
 			fmt.Fprintf(os.Stderr, "   %d. %s\n", i+1, ed.Name)
 		}
 		fmt.Fprintf(os.Stderr, "\nConfigure MCP for all detected editors? (Y/n/s) [Y]: ")
-		
+
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -1198,7 +1198,7 @@ func configureMCPForEditors(projectPath string, tracker *ui.StepTracker) error {
 				return fmt.Errorf("failed to read input: %w", err)
 			}
 			input = strings.TrimSpace(strings.ToLower(input))
-			
+
 			if input == "s" {
 				selectedEditors = nil
 			} else {
@@ -1336,14 +1336,14 @@ func installBinaryToPath(tracker *ui.StepTracker) error {
 			filepath.Join(os.Getenv("HOME"), ".local", "bin"),
 			filepath.Join(os.Getenv("HOME"), "bin"),
 		}
-		
+
 		for _, dir := range candidates {
 			if isWritable(dir) {
 				installDir = dir
 				break
 			}
 		}
-		
+
 		if installDir == "" {
 			// Create ~/.local/bin as fallback
 			homeLocalBin := filepath.Join(os.Getenv("HOME"), ".local", "bin")
@@ -1416,7 +1416,7 @@ func isWritable(dir string) bool {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return false
 	}
-	
+
 	// Try to create a temporary file
 	testFile := filepath.Join(dir, ".technocrat-test")
 	f, err := os.Create(testFile)
@@ -1435,7 +1435,7 @@ func isInPath(dir string) bool {
 	if runtime.GOOS == "windows" {
 		pathSep = ";"
 	}
-	
+
 	paths := strings.Split(pathEnv, pathSep)
 	for _, path := range paths {
 		if path == dir {
@@ -1468,6 +1468,6 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return os.Chmod(dst, srcInfo.Mode())
 }

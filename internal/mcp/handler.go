@@ -140,10 +140,13 @@ func (h *Handler) registerDefaultPrompts() {
 				name = n
 			}
 			return map[string]interface{}{
-				"messages": []map[string]string{
+				"messages": []map[string]interface{}{
 					{
-						"role":    "user",
-						"content": fmt.Sprintf("Hello, %s! Welcome to Technocrat MCP Server.", name),
+						"role": "user",
+						"content": map[string]interface{}{
+							"type": "text",
+							"text": fmt.Sprintf("Hello, %s! Welcome to Technocrat MCP Server.", name),
+						},
 					},
 				},
 			}, nil
@@ -269,7 +272,7 @@ func (h *Handler) registerCommandPrompt(commandName string) error {
 
 	// Create prompt
 	prompt := Prompt{
-		Name:        "tchncrt." + commandName,
+		Name:        commandName,
 		Description: description,
 		Arguments: []PromptArgument{
 			{
@@ -290,8 +293,11 @@ func (h *Handler) registerCommandPrompt(commandName string) error {
 			return map[string]interface{}{
 				"messages": []map[string]interface{}{
 					{
-						"role":    "user",
-						"content": message,
+						"role": "user",
+						"content": map[string]interface{}{
+							"type": "text",
+							"text": message,
+						},
 					},
 				},
 			}, nil
@@ -350,7 +356,12 @@ func parseCommandTemplate(content string) (description string, workflow string) 
 func buildPromptMessage(commandName, workflow, userInput string) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("# Technocrat %s Workflow\n\n", strings.Title(commandName)))
+	// Capitalize first letter of command name
+	capitalizedName := commandName
+	if len(commandName) > 0 {
+		capitalizedName = strings.ToUpper(commandName[:1]) + commandName[1:]
+	}
+	sb.WriteString(fmt.Sprintf("# Technocrat %s Workflow\n\n", capitalizedName))
 
 	if userInput != "" {
 		sb.WriteString("## User Input\n\n")
