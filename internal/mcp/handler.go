@@ -2,6 +2,9 @@ package mcp
 
 import (
 	"fmt"
+	"strings"
+	
+	"technocrat/internal/templates"
 )
 
 // Handler manages MCP protocol operations
@@ -54,6 +57,12 @@ func NewHandler() *Handler {
 	h.registerDefaultTools()
 	h.registerDefaultResources()
 	h.registerDefaultPrompts()
+	
+	// Register command prompts from templates
+	if err := h.RegisterCommandPrompts(); err != nil {
+		// Log error but don't fail - default prompts still available
+		fmt.Printf("Warning: Failed to register command prompts: %v\n", err)
+	}
 
 	return h
 }
@@ -226,4 +235,132 @@ func (h *Handler) RegisterResource(resource Resource) {
 // RegisterPrompt registers a new prompt
 func (h *Handler) RegisterPrompt(prompt Prompt) {
 	h.prompts[prompt.Name] = prompt
+}
+
+// RegisterCommandPrompts registers all workflow prompts from embedded templates
+func (h *Handler) RegisterCommandPrompts() error {
+	// Get list of all command templates
+	commands, err := templates.ListCommands()
+	if err != nil {
+		return fmt.Errorf("failed to list command templates: %w", err)
+	}
+
+	// Register each command as a prompt
+	for _, cmdName := range commands {
+		if err := h.registerCommandPrompt(cmdName); err != nil {
+			// Log error but continue with other commands
+			continue
+		}
+	}
+
+	return nil
+}
+
+// registerCommandPrompt registers a single command prompt from template
+func (h *Handler) registerCommandPrompt(commandName string) error {
+	// Load template from embedded filesystem
+	content, err := templates.GetCommandTemplate(commandName + ".md")
+	if err != nil {
+		return fmt.Errorf("failed to load template for %s: %w", commandName, err)
+	}
+
+	// Parse template to extract description and workflow
+	description, workflow := parseCommandTemplate(string(content))
+
+	// Create prompt
+	prompt := Prompt{
+		Name:        "tchncrt." + commandName,
+		Description: description,
+		Arguments: []PromptArgument{
+			{
+				Name:        "user_input",
+				Description: "Optional user input to guide the workflow",
+				Required:    false,
+			},
+		},
+		Handler: func(args map[string]interface{}) (interface{}, error) {
+			userInput := ""
+			if input, ok := args["user_input"].(string); ok {
+				userInput = input
+			}
+
+			// Build prompt message with workflow instructions
+			message := buildPromptMessage(commandName, workflow, userInput)
+
+			return map[string]interface{}{
+				"messages": []map[string]interface{}{
+					{
+						"role":    "user",
+						"content": message,
+					},
+				},
+			}, nil
+		},
+	}
+
+	h.RegisterPrompt(prompt)
+	return nil
+}
+
+// parseCommandTemplate extracts description and workflow from command template
+func parseCommandTemplate(content string) (description string, workflow string) {
+	lines := strings.Split(content, "\n")
+	
+	// Extract description from YAML frontmatter
+	inFrontmatter := false
+	inWorkflow := false
+	var workflowLines []string
+
+	for i, line := range lines {
+		// Check for frontmatter
+		if i == 0 && strings.TrimSpace(line) == "---" {
+			inFrontmatter = true
+			continue
+		}
+		if inFrontmatter && strings.TrimSpace(line) == "---" {
+			inFrontmatter = false
+			continue
+		}
+		if inFrontmatter && strings.HasPrefix(line, "description:") {
+			description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
+			description = strings.Trim(description, "\"")
+			continue
+		}
+
+		// Extract workflow content (everything after frontmatter)
+		if !inFrontmatter && !inWorkflow && len(strings.TrimSpace(line)) > 0 {
+			inWorkflow = true
+		}
+		if inWorkflow {
+			workflowLines = append(workflowLines, line)
+		}
+	}
+
+	workflow = strings.Join(workflowLines, "\n")
+	
+	// Default description if not found
+	if description == "" {
+		description = "Execute workflow command"
+	}
+
+	return description, workflow
+}
+
+// buildPromptMessage constructs the prompt message for the AI
+func buildPromptMessage(commandName, workflow, userInput string) string {
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("# Technocrat %s Workflow\n\n", strings.Title(commandName)))
+
+	if userInput != "" {
+		sb.WriteString("## User Input\n\n")
+		sb.WriteString(userInput)
+		sb.WriteString("\n\n")
+		sb.WriteString("---\n\n")
+	}
+
+	sb.WriteString("## Workflow Instructions\n\n")
+	sb.WriteString(workflow)
+
+	return sb.String()
 }

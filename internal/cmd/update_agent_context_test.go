@@ -344,18 +344,28 @@ Auto-generated from all feature plans. Last updated: [DATE]
 			},
 		},
 		{
-			name: "fail with missing template",
+			name: "create with embedded template",
 			config: AgentFileConfig{
-				Path: filepath.Join(t.TempDir(), "FAIL.md"),
-				Name: "Fail Test",
+				Path: filepath.Join(tmpDir, "EMBEDDED.md"),
+				Name: "Embedded Test",
 			},
 			paths: &FeaturePaths{
-				RepoRoot:      t.TempDir(), // Different root without template
-				CurrentBranch: "003-fail",
+				RepoRoot:      tmpDir,
+				CurrentBranch: "003-embedded",
 				HasGit:        true,
 			},
-			planData: &PlanData{},
-			wantErr:  true,
+			planData: &PlanData{
+				Language: "Python 3.11",
+			},
+			wantErr: false,
+			checkOutput: func(t *testing.T, content string) {
+				if !strings.Contains(content, "003-embedded") {
+					t.Error("Expected branch name not found")
+				}
+				if !strings.Contains(content, "Python 3.11") {
+					t.Error("Expected language not found")
+				}
+			},
 		},
 	}
 
@@ -1063,12 +1073,10 @@ Test implementation
 		}
 		testCmd.SetArgs([]string{})
 
+		// With embedded templates, this should now succeed
 		err := testCmd.Execute()
-		if err == nil {
-			t.Error("Expected error when template is missing")
-		}
-		if !strings.Contains(err.Error(), "template not found") {
-			t.Errorf("Expected 'template not found' error, got: %v", err)
+		if err != nil {
+			t.Errorf("Should succeed with embedded template: %v", err)
 		}
 	})
 }

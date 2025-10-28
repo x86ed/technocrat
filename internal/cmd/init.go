@@ -15,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"technocrat/internal/editor"
+	"technocrat/internal/installer"
+	"technocrat/internal/templates"
 	"technocrat/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -417,10 +420,10 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	// Download and extract template
-	if err := downloadAndExtractTemplate(projectPath, selectedAI, selectedScript, here, tracker); err != nil {
+	if err := setupProjectStructure(projectPath, selectedAI, selectedScript, here, tracker); err != nil {
 		tracker.StopLive()
 		showDebugEnvironment()
-		return fmt.Errorf("failed to download template: %w", err)
+		return fmt.Errorf("failed to setup project: %w", err)
 	}
 
 	// Ensure scripts are executable (Unix-like systems)
@@ -463,6 +466,15 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Configure MCP server for detected editors
+	if err := configureMCPForEditors(projectPath, tracker); err != nil {
+		tracker.StopLive()
+		// Don't fail initialization if MCP config fails, just warn
+		if !ui.IsInteractive() {
+			fmt.Fprintf(os.Stderr, "  ⚠ Warning: Failed to configure MCP server: %v\n", err)
+		}
+	}
+
 	// Stop live tracker
 	tracker.StopLive()
 
@@ -480,10 +492,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 		ui.ShowWarning("Git Initialization Failed", msg)
 	}
 
-	// Show agent folder security notice
-	config := agentConfigs[selectedAI]
-	msg := fmt.Sprintf("Some agents may store credentials in %s\n\nConsider adding %s to .gitignore to prevent credential leakage", config.Folder, config.Folder)
-	ui.ShowWarning("Security Notice", msg)
+	// Show agent folder security notice - NO LONGER NEEDED since we don't create agent folders
+	// The MCP server configuration is handled separately and stored in editor-specific locations
 
 	// Build Next Steps content
 	var nextSteps strings.Builder
@@ -494,41 +504,28 @@ func runInit(cmd *cobra.Command, args []string) error {
 		stepNum++
 	}
 
-	// Add Codex-specific environment variable setup
-	if selectedAI == "codex" {
-		codexPath := filepath.Join(projectPath, ".codex")
-		var cmd string
-		if runtime.GOOS == "windows" {
-			cmd = fmt.Sprintf("setx CODEX_HOME \"%s\"", codexPath)
-		} else {
-			cmd = fmt.Sprintf("export CODEX_HOME='%s'", strings.ReplaceAll(codexPath, "'", "'\\''"))
-		}
-		nextSteps.WriteString(fmt.Sprintf("%d. Set Codex environment variable:\n   %s\n", stepNum, cmd))
-		if runtime.GOOS != "windows" {
-			nextSteps.WriteString(fmt.Sprintf("   %s\n", ui.ColorDim.Sprint("Note: Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.)")))
-		}
-		nextSteps.WriteString("\n")
-		stepNum++
-	}
+	nextSteps.WriteString(fmt.Sprintf("%d. Start using Technocrat via MCP prompts:\n\n", stepNum))
+	nextSteps.WriteString("   Core workflow:\n")
+	nextSteps.WriteString("     • tchncrt.constitution - Establish project principles\n")
+	nextSteps.WriteString("     • tchncrt.spec         - Create feature specification\n")
+	nextSteps.WriteString("     • tchncrt.plan         - Create implementation plan\n")
+	nextSteps.WriteString("     • tchncrt.tasks        - Generate actionable tasks\n")
+	nextSteps.WriteString("     • tchncrt.implement    - Execute implementation\n")
+	nextSteps.WriteString("\n")
+	stepNum++
 
-	nextSteps.WriteString(fmt.Sprintf("%d. Start using slash commands with your AI agent:\n\n", stepNum))
-	nextSteps.WriteString("   Core workflow commands:\n")
-	nextSteps.WriteString("     • /tchncrt.constitution - Establish project principles\n")
-	nextSteps.WriteString("     • /tchncrt.spec         - Create baseline specification\n")
-	nextSteps.WriteString("     • /tchncrt.plan         - Create implementation plan\n")
-	nextSteps.WriteString("     • /tchncrt.tasks        - Generate actionable tasks\n")
-	nextSteps.WriteString("     • /tchncrt.implement    - Execute implementation\n")
+	nextSteps.WriteString(fmt.Sprintf("%d. Restart your editor to activate the MCP server\n", stepNum))
 
 	ui.ShowSuccess("Next Steps", nextSteps.String())
 
 	// Build Enhancement Commands content
 	var enhancements strings.Builder
-	enhancements.WriteString("Use these commands to improve quality & confidence:\n\n")
-	enhancements.WriteString(fmt.Sprintf("  • /tchncrt.clarify   - Ask structured questions\n    %s\n\n",
+	enhancements.WriteString("Additional quality commands:\n\n")
+	enhancements.WriteString(fmt.Sprintf("  • tchncrt.clarify   - Ask structured questions\n    %s\n\n",
 		ui.ColorDim.Sprint("Use before creating your plan")))
-	enhancements.WriteString(fmt.Sprintf("  • /tchncrt.checklist - Quality validation checklists\n    %s\n\n",
+	enhancements.WriteString(fmt.Sprintf("  • tchncrt.checklist - Quality validation checklists\n    %s\n\n",
 		ui.ColorDim.Sprint("Use after creating your plan")))
-	enhancements.WriteString(fmt.Sprintf("  • /tchncrt.analyze   - Cross-artifact consistency report\n    %s",
+	enhancements.WriteString(fmt.Sprintf("  • tchncrt.analyze   - Cross-artifact consistency report\n    %s",
 		ui.ColorDim.Sprint("Use after generating tasks")))
 
 	ui.ShowInfo("Enhancement Commands", enhancements.String())
@@ -642,6 +639,126 @@ func promptForScriptType() string {
 	// Fall back to default for non-interactive mode
 	fmt.Fprintf(os.Stderr, "Using default script type: %s\n", defaultScript)
 	return defaultScript
+}
+
+// setupProjectStructure creates the project structure using embedded templates
+// Note: Agent-specific commands are now served via MCP server, not as files
+func setupProjectStructure(projectPath, aiAssistant, scriptType string, inCurrentDir bool, tracker *ui.StepTracker) error {
+	// Start setup step
+	if tracker != nil {
+		tracker.Start("download", "Setting up project structure...")
+	}
+
+	// Create base directories
+	baseDirs := []string{
+		".tchncrt",
+		".tchncrt/features",
+		"memory",
+		"specs",
+	}
+
+	fileCount := 0
+	totalSize := 0
+
+	for _, dir := range baseDirs {
+		dirPath := filepath.Join(projectPath, dir)
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
+	// Write constitution file
+	constitutionPath := filepath.Join(projectPath, "memory", "constitution.md")
+	constitutionData, err := templates.GetCommandTemplate("constitution.md")
+	if err != nil {
+		return fmt.Errorf("failed to get constitution template: %w", err)
+	}
+	if err := os.WriteFile(constitutionPath, constitutionData, 0644); err != nil {
+		return fmt.Errorf("failed to write constitution file: %w", err)
+	}
+	fileCount++
+	totalSize += len(constitutionData)
+
+	// Create README explaining MCP-based workflow
+	readmePath := filepath.Join(projectPath, "README.md")
+	readmeContent := `# Technocrat Project
+
+This project uses [Technocrat](https://github.com/x86ed/technocrat) for Spec-Driven Development.
+
+## Getting Started
+
+Technocrat commands are available via the MCP (Model Context Protocol) server integrated with your editor.
+
+### Available Commands
+
+- **tchncrt.constitution** - Establish project principles
+- **tchncrt.spec** - Create feature specification
+- **tchncrt.plan** - Create implementation plan
+- **tchncrt.tasks** - Generate actionable tasks
+- **tchncrt.implement** - Execute implementation
+- **tchncrt.clarify** - Ask structured questions
+- **tchncrt.checklist** - Quality validation checklists
+- **tchncrt.analyze** - Cross-artifact consistency report
+
+### Usage
+
+Simply invoke these commands through your AI assistant (e.g., Claude, Copilot, etc.).
+The MCP server provides all workflow templates and tools automatically.
+
+### Project Structure
+
+- .tchncrt/ - Technocrat working directory
+  - features/ - Feature branches and specifications
+- memory/ - Project context and constitution
+- specs/ - Top-level specifications
+
+### Documentation
+
+For more information, visit: https://github.com/x86ed/technocrat
+`
+	if err := os.WriteFile(readmePath, []byte(readmeContent), 0644); err != nil {
+		return fmt.Errorf("failed to write README: %w", err)
+	}
+	fileCount++
+	totalSize += len(readmeContent)
+
+	// Create .gitignore
+	gitignorePath := filepath.Join(projectPath, ".gitignore")
+	gitignoreContent := `# Technocrat working directory
+.tchncrt/
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+vendor/
+`
+	if err := os.WriteFile(gitignorePath, []byte(gitignoreContent), 0644); err != nil {
+		return fmt.Errorf("failed to write .gitignore: %w", err)
+	}
+	fileCount++
+	totalSize += len(gitignoreContent)
+
+	if tracker != nil {
+		tracker.Complete("download", fmt.Sprintf("%d files, %s", fileCount, formatBytes(totalSize)))
+	}
+	fmt.Fprintf(os.Stderr, "  ✓ Project structure created: %d files (%s)\n", fileCount, formatBytes(totalSize))
+
+	// Mark extraction as complete (reusing the tracker step)
+	if tracker != nil {
+		tracker.Complete("extract", "Ready")
+	}
+
+	return nil
 }
 
 func downloadAndExtractTemplate(projectPath, aiAssistant, scriptType string, inCurrentDir bool, tracker *ui.StepTracker) error {
@@ -1010,6 +1127,105 @@ func makeScriptsExecutable(projectPath string) error {
 	}
 
 	return err
+}
+
+// configureMCPForEditors detects installed editors and configures the MCP server
+func configureMCPForEditors(projectPath string, tracker *ui.StepTracker) error {
+	// Detect available editors
+	tracker.Add("detect_editors", "Detecting installed editors")
+	tracker.Start("detect_editors", "Scanning for compatible editors...")
+
+	editors := editor.DetectEditors()
+	if len(editors) == 0 {
+		tracker.Complete("detect_editors", "No compatible editors found")
+		if !ui.IsInteractive() {
+			fmt.Fprintln(os.Stderr, "  ℹ No compatible editors detected for MCP configuration")
+		}
+		return nil
+	}
+
+	// Build list of detected editors
+	var editorNames []string
+	for _, ed := range editors {
+		editorNames = append(editorNames, ed.Name)
+	}
+	tracker.Complete("detect_editors", fmt.Sprintf("Found: %s", strings.Join(editorNames, ", ")))
+
+	// In interactive mode, prompt user to select editors to configure
+	var selectedEditors []editor.Editor
+	if ui.IsInteractive() {
+		tracker.StopLive() // Pause tracker for user input
+		fmt.Fprintln(os.Stderr, "\n📝 Configure MCP server for the following editor(s)?")
+		for i, ed := range editors {
+			fmt.Fprintf(os.Stderr, "   %d. %s\n", i+1, ed.Name)
+		}
+		fmt.Fprintf(os.Stderr, "   a. All editors\n")
+		fmt.Fprintf(os.Stderr, "   s. Skip MCP configuration\n")
+		fmt.Fprintf(os.Stderr, "\nEnter your choice (1-%d, a, s) [a]: ", len(editors))
+
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+		input = strings.TrimSpace(strings.ToLower(input))
+
+		if input == "" || input == "a" {
+			selectedEditors = editors
+		} else if input == "s" {
+			fmt.Fprint(os.Stderr, "  ✓ Skipping MCP configuration\n")
+			tracker.StartLive() // Resume tracker
+			return nil
+		} else {
+			// Parse selection (single number or comma-separated)
+			for _, choice := range strings.Split(input, ",") {
+				choice = strings.TrimSpace(choice)
+				var idx int
+				if _, err := fmt.Sscanf(choice, "%d", &idx); err == nil && idx > 0 && idx <= len(editors) {
+					selectedEditors = append(selectedEditors, editors[idx-1])
+				}
+			}
+		}
+
+		if len(selectedEditors) == 0 {
+			fmt.Fprint(os.Stderr, "  ⚠ No editors selected, skipping MCP configuration\n")
+			tracker.StartLive() // Resume tracker
+			return nil
+		}
+		tracker.StartLive() // Resume tracker
+	} else {
+		// Non-interactive mode: configure all detected editors
+		selectedEditors = editors
+	}
+
+	// Install MCP configuration for selected editors
+	successCount := 0
+	for _, ed := range selectedEditors {
+		stepID := fmt.Sprintf("mcp_%s", strings.ToLower(strings.ReplaceAll(ed.Name, " ", "_")))
+		tracker.Add(stepID, fmt.Sprintf("Configuring %s", ed.Name))
+		tracker.Start(stepID, fmt.Sprintf("Installing MCP config for %s...", ed.Name))
+
+		if err := installer.InstallMCPConfig(ed, projectPath); err != nil {
+			tracker.Error(stepID, fmt.Sprintf("Failed: %v", err))
+			if !ui.IsInteractive() {
+				fmt.Fprintf(os.Stderr, "  ⚠ Warning: Failed to configure %s: %v\n", ed.Name, err)
+			}
+		} else {
+			tracker.Complete(stepID, fmt.Sprintf("%s configured", ed.Name))
+			successCount++
+			if !ui.IsInteractive() {
+				fmt.Fprintf(os.Stderr, "  ✓ MCP server configured for %s\n", ed.Name)
+			}
+		}
+	}
+
+	if successCount > 0 {
+		if !ui.IsInteractive() {
+			fmt.Fprintf(os.Stderr, "\n  ℹ Restart your editor(s) to activate the MCP server\n")
+		}
+	}
+
+	return nil
 }
 
 // min returns the minimum of two integers
