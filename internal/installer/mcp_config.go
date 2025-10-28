@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"technocrat/internal/editor"
@@ -16,22 +17,57 @@ type MCPServerConfig struct {
 	Env     map[string]string `json:"env,omitempty"`
 }
 
+// getTechnocratPath returns the best path to the technocrat binary
+func getTechnocratPath() (string, error) {
+	// First try to find technocrat in PATH
+	if path, err := exec.LookPath("technocrat"); err == nil {
+		// Make sure it's an absolute path
+		if absPath, err := filepath.Abs(path); err == nil {
+			return absPath, nil
+		}
+		return path, nil
+	}
+
+	// Fall back to current executable path
+	if path, err := os.Executable(); err == nil {
+		// Resolve any symlinks
+		if realPath, err := filepath.EvalSymlinks(path); err == nil {
+			return realPath, nil
+		}
+		return path, nil
+	}
+
+	return "", fmt.Errorf("could not determine technocrat binary path")
+}
+
 // InstallMCPConfig installs MCP server configuration for an editor
 func InstallMCPConfig(ed editor.Editor, projectPath string) error {
+	var err error
 	switch ed.Type {
 	case editor.VSCode:
-		return installVSCodeMCP(projectPath)
+		err = installVSCodeMCP(projectPath)
 	case editor.ClaudeDesktop:
-		return installClaudeMCP(ed.ConfigDir)
+		err = installClaudeMCP(ed.ConfigDir)
 	case editor.Cursor:
-		return installCursorMCP(ed.ConfigDir)
+		err = installCursorMCP(ed.ConfigDir)
 	case editor.AmazonQ:
-		return installAmazonQMCP(ed.ConfigDir)
+		err = installAmazonQMCP(ed.ConfigDir)
 	case editor.Windsurf:
-		return installWindsurfMCP(projectPath)
+		err = installWindsurfMCP(projectPath)
 	default:
 		return fmt.Errorf("unsupported editor: %s", ed.Name)
 	}
+	
+	if err != nil {
+		return err
+	}
+	
+	// Verify the configuration was written successfully
+	if !IsMCPConfigured(ed, projectPath) {
+		return fmt.Errorf("MCP configuration verification failed for %s", ed.Name)
+	}
+	
+	return nil
 }
 
 // installVSCodeMCP configures MCP for VS Code
@@ -53,7 +89,10 @@ func installVSCodeMCP(projectPath string) error {
 	}
 
 	// Get technocrat binary path
-	technocratPath, _ := os.Executable()
+	technocratPath, err := getTechnocratPath()
+	if err != nil {
+		return fmt.Errorf("failed to determine technocrat path: %w", err)
+	}
 
 	// Add MCP server configuration for GitHub Copilot
 	mcpServers := map[string]interface{}{
@@ -99,7 +138,10 @@ func installClaudeMCP(configDir string) error {
 	}
 
 	// Get technocrat binary path
-	technocratPath, _ := os.Executable()
+	technocratPath, err := getTechnocratPath()
+	if err != nil {
+		return fmt.Errorf("failed to determine technocrat path: %w", err)
+	}
 
 	// Add MCP server configuration
 	mcpServers := make(map[string]interface{})
@@ -109,7 +151,7 @@ func installClaudeMCP(configDir string) error {
 
 	mcpServers["technocrat"] = map[string]interface{}{
 		"command": technocratPath,
-		"args":    []string{"server", "--port", "8080"},
+		"args":    []string{"server"},
 	}
 
 	config["mcpServers"] = mcpServers
@@ -145,7 +187,10 @@ func installCursorMCP(configDir string) error {
 	}
 
 	// Get technocrat binary path
-	technocratPath, _ := os.Executable()
+	technocratPath, err := getTechnocratPath()
+	if err != nil {
+		return fmt.Errorf("failed to determine technocrat path: %w", err)
+	}
 
 	// Add MCP server configuration
 	config["technocrat"] = map[string]interface{}{
@@ -212,7 +257,10 @@ func installWindsurfMCP(projectPath string) error {
 	}
 
 	// Get technocrat binary path
-	technocratPath, _ := os.Executable()
+	technocratPath, err := getTechnocratPath()
+	if err != nil {
+		return fmt.Errorf("failed to determine technocrat path: %w", err)
+	}
 
 	// Create MCP config
 	config := map[string]interface{}{

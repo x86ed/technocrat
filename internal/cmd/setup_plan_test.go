@@ -381,15 +381,15 @@ func TestRunSetupPlan(t *testing.T) {
 			}
 			return nil
 		})
-		
+
 		if len(foundPaths) == 0 {
 			t.Fatal("runSetupPlan() should create plan.md file somewhere")
 		}
-		
+
 		if len(foundPaths) > 1 {
 			t.Logf("Found multiple plan.md files: %v", foundPaths)
 		}
-		
+
 		planPath := foundPaths[0]
 		t.Logf("Found plan.md at: %s", planPath)
 

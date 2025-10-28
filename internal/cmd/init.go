@@ -122,6 +122,8 @@ var (
 	githubToken      string
 	skipTLS          bool
 	debug            bool
+	skipMCP          bool
+	skipPath         bool
 )
 
 const banner = `
@@ -173,6 +175,8 @@ func init() {
 	initCmd.Flags().StringVar(&githubToken, "github-token", "", "GitHub token for API requests")
 	initCmd.Flags().BoolVar(&skipTLS, "skip-tls", false, "Skip SSL/TLS verification (not recommended)")
 	initCmd.Flags().BoolVar(&debug, "debug", false, "Show verbose diagnostic output")
+	initCmd.Flags().BoolVar(&skipMCP, "skip-mcp", false, "Skip MCP server configuration for editors")
+	initCmd.Flags().BoolVar(&skipPath, "skip-path", false, "Skip installing binary to PATH")
 }
 
 func showDebugEnvironment() {
@@ -466,12 +470,25 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Configure MCP server for detected editors
-	if err := configureMCPForEditors(projectPath, tracker); err != nil {
-		tracker.StopLive()
-		// Don't fail initialization if MCP config fails, just warn
-		if !ui.IsInteractive() {
-			fmt.Fprintf(os.Stderr, "  ⚠ Warning: Failed to configure MCP server: %v\n", err)
+	// Configure MCP server for detected editors (unless skipped)
+	if !skipMCP {
+		if err := configureMCPForEditors(projectPath, tracker); err != nil {
+			tracker.StopLive()
+			// Don't fail initialization if MCP config fails, just warn
+			if !ui.IsInteractive() {
+				fmt.Fprintf(os.Stderr, "  ⚠ Warning: Failed to configure MCP server: %v\n", err)
+			}
+		}
+	}
+
+	// Install binary to PATH (unless skipped)
+	if !skipPath {
+		if err := installBinaryToPath(tracker); err != nil {
+			tracker.StopLive()
+			// Don't fail initialization if PATH install fails, just warn
+			if !ui.IsInteractive() {
+				fmt.Fprintf(os.Stderr, "  ⚠ Warning: Failed to install binary to PATH: %v\n", err)
+			}
 		}
 	}
 
@@ -1151,18 +1168,18 @@ func configureMCPForEditors(projectPath string, tracker *ui.StepTracker) error {
 	}
 	tracker.Complete("detect_editors", fmt.Sprintf("Found: %s", strings.Join(editorNames, ", ")))
 
-	// In interactive mode, prompt user to select editors to configure
-	var selectedEditors []editor.Editor
+	// Configure all detected editors by default
+	selectedEditors := editors
+
+	// In interactive mode, allow user to opt out or customize
 	if ui.IsInteractive() {
 		tracker.StopLive() // Pause tracker for user input
-		fmt.Fprintln(os.Stderr, "\n📝 Configure MCP server for the following editor(s)?")
+		fmt.Fprintln(os.Stderr, "\n📝 Configure MCP server for detected editor(s)?")
 		for i, ed := range editors {
 			fmt.Fprintf(os.Stderr, "   %d. %s\n", i+1, ed.Name)
 		}
-		fmt.Fprintf(os.Stderr, "   a. All editors\n")
-		fmt.Fprintf(os.Stderr, "   s. Skip MCP configuration\n")
-		fmt.Fprintf(os.Stderr, "\nEnter your choice (1-%d, a, s) [a]: ", len(editors))
-
+		fmt.Fprintf(os.Stderr, "\nConfigure MCP for all detected editors? (Y/n/s) [Y]: ")
+		
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -1170,32 +1187,40 @@ func configureMCPForEditors(projectPath string, tracker *ui.StepTracker) error {
 		}
 		input = strings.TrimSpace(strings.ToLower(input))
 
-		if input == "" || input == "a" {
-			selectedEditors = editors
-		} else if input == "s" {
-			fmt.Fprint(os.Stderr, "  ✓ Skipping MCP configuration\n")
-			tracker.StartLive() // Resume tracker
-			return nil
-		} else {
-			// Parse selection (single number or comma-separated)
-			for _, choice := range strings.Split(input, ",") {
-				choice = strings.TrimSpace(choice)
-				var idx int
-				if _, err := fmt.Sscanf(choice, "%d", &idx); err == nil && idx > 0 && idx <= len(editors) {
-					selectedEditors = append(selectedEditors, editors[idx-1])
+		switch input {
+		case "", "y", "yes":
+			// Keep all editors (default)
+		case "n", "no":
+			// Prompt for individual selection
+			fmt.Fprintf(os.Stderr, "Select editors (comma-separated numbers, or 's' to skip): ")
+			input, err = reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read input: %w", err)
+			}
+			input = strings.TrimSpace(strings.ToLower(input))
+			
+			if input == "s" {
+				selectedEditors = nil
+			} else {
+				selectedEditors = nil
+				for _, choice := range strings.Split(input, ",") {
+					choice = strings.TrimSpace(choice)
+					var idx int
+					if _, err := fmt.Sscanf(choice, "%d", &idx); err == nil && idx > 0 && idx <= len(editors) {
+						selectedEditors = append(selectedEditors, editors[idx-1])
+					}
 				}
 			}
+		case "s", "skip":
+			selectedEditors = nil
 		}
 
 		if len(selectedEditors) == 0 {
-			fmt.Fprint(os.Stderr, "  ⚠ No editors selected, skipping MCP configuration\n")
+			fmt.Fprint(os.Stderr, "  ✓ Skipping MCP configuration\n")
 			tracker.StartLive() // Resume tracker
 			return nil
 		}
 		tracker.StartLive() // Resume tracker
-	} else {
-		// Non-interactive mode: configure all detected editors
-		selectedEditors = editors
 	}
 
 	// Install MCP configuration for selected editors
@@ -1272,4 +1297,177 @@ func initGitRepo(path string) error {
 	}
 
 	return nil
+}
+
+// installBinaryToPath installs the technocrat binary to a location in PATH
+func installBinaryToPath(tracker *ui.StepTracker) error {
+	tracker.Add("install_path", "Installing binary to PATH")
+	tracker.Start("install_path", "Checking installation...")
+
+	// Get current executable path
+	currentExe, err := os.Executable()
+	if err != nil {
+		tracker.Error("install_path", fmt.Sprintf("Failed to get executable path: %v", err))
+		return fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Resolve symlinks to get real path
+	realExe, err := filepath.EvalSymlinks(currentExe)
+	if err != nil {
+		realExe = currentExe // fallback if symlink resolution fails
+	}
+
+	// Check if already in PATH
+	if pathExe, err := exec.LookPath("technocrat"); err == nil {
+		pathReal, _ := filepath.EvalSymlinks(pathExe)
+		if pathReal == realExe {
+			tracker.Complete("install_path", "Already in PATH")
+			return nil
+		}
+	}
+
+	// Determine installation directory based on OS
+	var installDir string
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		// Check common directories in order of preference
+		candidates := []string{
+			"/usr/local/bin",
+			filepath.Join(os.Getenv("HOME"), ".local", "bin"),
+			filepath.Join(os.Getenv("HOME"), "bin"),
+		}
+		
+		for _, dir := range candidates {
+			if isWritable(dir) {
+				installDir = dir
+				break
+			}
+		}
+		
+		if installDir == "" {
+			// Create ~/.local/bin as fallback
+			homeLocalBin := filepath.Join(os.Getenv("HOME"), ".local", "bin")
+			if err := os.MkdirAll(homeLocalBin, 0755); err != nil {
+				tracker.Error("install_path", "No writable PATH directory found")
+				return fmt.Errorf("no writable PATH directory found and failed to create %s: %w", homeLocalBin, err)
+			}
+			installDir = homeLocalBin
+		}
+	case "windows":
+		// On Windows, use %USERPROFILE%\bin
+		userProfile := os.Getenv("USERPROFILE")
+		if userProfile == "" {
+			tracker.Error("install_path", "USERPROFILE not set")
+			return fmt.Errorf("USERPROFILE environment variable not set")
+		}
+		installDir = filepath.Join(userProfile, "bin")
+		if err := os.MkdirAll(installDir, 0755); err != nil {
+			tracker.Error("install_path", fmt.Sprintf("Failed to create %s", installDir))
+			return fmt.Errorf("failed to create %s: %w", installDir, err)
+		}
+	default:
+		tracker.Error("install_path", fmt.Sprintf("Unsupported OS: %s", runtime.GOOS))
+		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+
+	// Copy or link the binary
+	targetPath := filepath.Join(installDir, "technocrat")
+	if runtime.GOOS == "windows" {
+		targetPath += ".exe"
+	}
+
+	tracker.Start("install_path", fmt.Sprintf("Installing to %s...", installDir))
+
+	// Try to create a symlink first (more efficient and keeps updates)
+	if err := os.Symlink(realExe, targetPath); err != nil {
+		// Symlink failed, try copying the file
+		if err := copyFile(realExe, targetPath); err != nil {
+			tracker.Error("install_path", fmt.Sprintf("Failed to install: %v", err))
+			return fmt.Errorf("failed to install binary: %w", err)
+		}
+		tracker.Complete("install_path", fmt.Sprintf("Copied to %s", targetPath))
+	} else {
+		tracker.Complete("install_path", fmt.Sprintf("Linked to %s", targetPath))
+	}
+
+	// Add PATH instructions for user
+	if !ui.IsInteractive() {
+		if !isInPath(installDir) {
+			fmt.Fprintf(os.Stderr, "  ℹ Add %s to your PATH to use 'technocrat' from anywhere:\n", installDir)
+			switch runtime.GOOS {
+			case "darwin", "linux":
+				shell := os.Getenv("SHELL")
+				if strings.Contains(shell, "zsh") {
+					fmt.Fprintf(os.Stderr, "    echo 'export PATH=\"%s:$PATH\"' >> ~/.zshrc && source ~/.zshrc\n", installDir)
+				} else {
+					fmt.Fprintf(os.Stderr, "    echo 'export PATH=\"%s:$PATH\"' >> ~/.bashrc && source ~/.bashrc\n", installDir)
+				}
+			case "windows":
+				fmt.Fprintf(os.Stderr, "    Add %s to your system PATH environment variable\n", installDir)
+			}
+		}
+	}
+
+	return nil
+}
+
+// isWritable checks if a directory is writable
+func isWritable(dir string) bool {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return false
+	}
+	
+	// Try to create a temporary file
+	testFile := filepath.Join(dir, ".technocrat-test")
+	f, err := os.Create(testFile)
+	if err != nil {
+		return false
+	}
+	f.Close()
+	os.Remove(testFile)
+	return true
+}
+
+// isInPath checks if a directory is in the current PATH
+func isInPath(dir string) bool {
+	pathEnv := os.Getenv("PATH")
+	pathSep := ":"
+	if runtime.GOOS == "windows" {
+		pathSep = ";"
+	}
+	
+	paths := strings.Split(pathEnv, pathSep)
+	for _, path := range paths {
+		if path == dir {
+			return true
+		}
+	}
+	return false
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return err
+	}
+
+	// Copy file permissions
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	
+	return os.Chmod(dst, srcInfo.Mode())
 }

@@ -3,7 +3,7 @@ package mcp
 import (
 	"fmt"
 	"strings"
-	
+
 	"technocrat/internal/templates"
 )
 
@@ -57,7 +57,7 @@ func NewHandler() *Handler {
 	h.registerDefaultTools()
 	h.registerDefaultResources()
 	h.registerDefaultPrompts()
-	
+
 	// Register command prompts from templates
 	if err := h.RegisterCommandPrompts(); err != nil {
 		// Log error but don't fail - default prompts still available
@@ -305,7 +305,7 @@ func (h *Handler) registerCommandPrompt(commandName string) error {
 // parseCommandTemplate extracts description and workflow from command template
 func parseCommandTemplate(content string) (description string, workflow string) {
 	lines := strings.Split(content, "\n")
-	
+
 	// Extract description from YAML frontmatter
 	inFrontmatter := false
 	inWorkflow := false
@@ -337,7 +337,7 @@ func parseCommandTemplate(content string) (description string, workflow string) 
 	}
 
 	workflow = strings.Join(workflowLines, "\n")
-	
+
 	// Default description if not found
 	if description == "" {
 		description = "Execute workflow command"
