@@ -7,12 +7,17 @@ scripts:
 # Tasks
 
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
+
+_No specific task generation guidance provided. Follow standard workflow._
+{{end}}
 
 ## Outline
 

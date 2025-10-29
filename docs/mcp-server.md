@@ -415,6 +415,232 @@ result = requests.post('http://localhost:8080/mcp/v1/tools/call', json={
 
 ---
 
+## Prompt Templates
+
+Technocrat prompts use Go's `text/template` engine for dynamic content generation. Templates have access to user input, project metadata, and feature artifacts.
+
+### Template Syntax
+
+Prompts are stored in `internal/templates/data/commands/` and use the following syntax:
+
+```markdown
+---
+description: "What this prompt does"
+---
+
+# Prompt Title
+
+{{if .Arguments}}
+User provided: {{.Arguments}}
+{{else}}
+No user input provided.
+{{end}}
+```
+
+### Available Variables
+
+All templates have access to the following data:
+
+| Variable | Type | Description | Example |
+|----------|------|-------------|---------|
+| `.Arguments` | string | User input text | `"Create REST API endpoints"` |
+| `.CommandName` | string | Command being executed | `"spec"`, `"plan"`, `"implement"` |
+| `.Timestamp` | time.Time | Current timestamp | `2025-10-28 14:30:00` |
+| `.ProjectName` | string | Detected project name | `"TechnoSync"` |
+| `.FeatureName` | string | Current feature name | `"user-authentication"` |
+| `.WorkspaceRoot` | string | Absolute workspace path | `"/Users/dev/my-project"` |
+| `.Extra` | map | Additional arguments | Custom key-value pairs |
+
+### Template Functions
+
+#### String Manipulation
+
+```go
+{{upper .CommandName}}      // "SPEC" (uppercase)
+{{lower .ProjectName}}      // "technosync" (lowercase)
+{{title .FeatureName}}      // "User-Authentication" (title case)
+{{trim .Arguments}}         // Remove leading/trailing whitespace
+```
+
+#### Date/Time
+
+```go
+{{.Timestamp.Format "2006-01-02"}}              // "2025-10-28"
+{{.Timestamp.Format "15:04:05"}}                // "14:30:00"
+{{now.Format "Monday, January 2, 2006"}}        // Current date formatted
+```
+
+#### Feature File Reading
+
+Templates can read existing feature artifacts:
+
+```go
+{{readSpec}}                 // Read specs/<feature>/spec.md
+{{readPlan}}                 // Read specs/<feature>/plan.md
+{{readTasks}}                // Read specs/<feature>/tasks.md
+{{readFile "notes.md"}}      // Read any file from feature directory
+```
+
+**Example:**
+
+```markdown
+{{if readSpec}}
+## Existing Specification
+
+The feature already has a spec:
+
+```markdown
+{{readSpec}}
+```
+
+Please review this before proceeding.
+{{else}}
+No existing specification found.
+{{end}}
+```
+
+### Conditional Rendering
+
+Use `{{if}}` blocks to show/hide content based on data presence:
+
+```markdown
+{{if .Arguments}}
+User guidance: {{.Arguments}}
+{{else}}
+No specific guidance provided.
+{{end}}
+
+{{if .FeatureName}}
+Working on feature: {{.FeatureName}}
+{{end}}
+
+{{if readPlan}}
+Previous plan exists - refer to it for context.
+{{end}}
+```
+
+### Complete Template Example
+
+```markdown
+---
+description: "Guide implementation with full context"
+---
+
+# Implementation Guide
+
+{{if .ProjectName}}
+**Project**: {{.ProjectName}}
+{{if .FeatureName}}**Feature**: {{.FeatureName}}{{end}}
+{{end}}
+
+## User Guidance
+
+{{if .Arguments}}
+{{trim .Arguments}}
+{{else}}
+Follow the standard implementation workflow.
+{{end}}
+
+{{if readSpec}}
+## Feature Specification
+
+```markdown
+{{readSpec}}
+```
+
+{{end}}
+{{if readPlan}}
+## Implementation Plan
+
+```markdown
+{{readPlan}}
+```
+
+{{end}}
+{{if readTasks}}
+## Tasks
+
+```markdown
+{{readTasks}}
+```
+
+{{end}}
+## Instructions
+
+1. Review all context above
+2. {{if .FeatureName}}Implement feature: {{.FeatureName}}{{else}}Begin implementation{{end}}
+3. Follow the project constitution principles
+4. Test thoroughly before marking complete
+```
+
+### Creating Custom Prompts
+
+To add a new prompt:
+
+1. **Create template file** in `internal/templates/data/commands/`:
+
+```markdown
+---
+description: "Your prompt description"
+---
+
+# Your Prompt Title
+
+{{.Arguments}}
+
+Your workflow instructions here...
+```
+
+2. **Add to command list** in `internal/mcp/handler.go`:
+
+```go
+func (h *Handler) RegisterCommandPrompts() error {
+    commands := []string{
+        "constitution",
+        "spec",
+        "plan",
+        "your-new-command", // Add here
+    }
+    // ...
+}
+```
+
+3. **Rebuild and test**:
+
+```bash
+go build -o technocrat ./cmd/technocrat
+./technocrat server
+```
+
+### Template Best Practices
+
+1. **Always provide fallbacks** for optional data:
+   ```markdown
+   {{if .Arguments}}{{.Arguments}}{{else}}No input provided{{end}}
+   ```
+
+2. **Use conditional sections** to avoid empty blocks:
+   ```markdown
+   {{if readSpec}}
+   ## Previous Spec
+   {{readSpec}}
+   {{end}}
+   ```
+
+3. **Trim user input** to remove accidental whitespace:
+   ```markdown
+   {{trim .Arguments}}
+   ```
+
+4. **Document available variables** in template comments:
+   ```markdown
+   <!-- Available: .Arguments, .ProjectName, .FeatureName, .WorkspaceRoot -->
+   ```
+
+5. **Test with and without user input** to ensure templates work in both cases.
+
+---
+
 ## Extending the MCP Server
 
 The MCP handler is implemented in `internal/mcp/handler.go`.

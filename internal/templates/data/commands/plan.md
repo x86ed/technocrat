@@ -7,12 +7,17 @@ agent_command: technocrat update-agent-context __AGENT__
 # Plan
 
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
+
+_No specific planning guidance provided. Follow standard planning workflow._
+{{end}}
 
 ## Outline
 

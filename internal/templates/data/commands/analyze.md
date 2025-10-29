@@ -6,14 +6,50 @@ scripts:
 
 # Analyze
 
+{{if .ProjectName}}
+## Project Context
+
+**Project**: {{.ProjectName}}
+{{if .FeatureName}}**Feature**: {{.FeatureName}}{{end}}
+{{end}}
+
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
 
+_No specific analysis focus provided. Perform comprehensive analysis._
+{{end}}
+
+{{if readSpec}}
+## Current Specification
+
+```markdown
+{{readSpec}}
+```
+
+{{end}}
+{{if readPlan}}
+## Current Plan
+
+```markdown
+{{readPlan}}
+```
+
+{{end}}
+{{if readTasks}}
+## Current Tasks
+
+```markdown
+{{readTasks}}
+```
+
+{{end}}
 ## Goal
 
 Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/tasks` has successfully produced a complete `tasks.md`.

@@ -4,12 +4,17 @@ description: Create or update the project constitution from interactive or provi
 # Constitution
 
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
+
+_No specific user input provided. Proceed with general constitution review._
+{{end}}
 
 ## Outline
 

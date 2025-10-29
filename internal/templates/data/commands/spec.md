@@ -6,12 +6,17 @@ command: technocrat create-feature --json {ARGS}
 # Spec
 
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
+
+_No specific feature description provided. Proceed with general guidance._
+{{end}}
 
 ## Outline
 

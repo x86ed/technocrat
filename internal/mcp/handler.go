@@ -3,6 +3,7 @@ package mcp
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"technocrat/internal/templates"
 )
@@ -140,13 +141,10 @@ func (h *Handler) registerDefaultPrompts() {
 				name = n
 			}
 			return map[string]interface{}{
-				"messages": []map[string]interface{}{
+				"messages": []map[string]string{
 					{
-						"role": "user",
-						"content": map[string]interface{}{
-							"type": "text",
-							"text": fmt.Sprintf("Hello, %s! Welcome to Technocrat MCP Server.", name),
-						},
+						"role":    "user",
+						"content": fmt.Sprintf("Hello, %s! Welcome to Technocrat MCP Server.", name),
 					},
 				},
 			}, nil
@@ -270,6 +268,9 @@ func (h *Handler) registerCommandPrompt(commandName string) error {
 	// Parse template to extract description and workflow
 	description, workflow := parseCommandTemplate(string(content))
 
+	// Prepare workflow content for Go template processing (convert $ARGUMENTS to {{.Arguments}})
+	workflow = PrepareTemplateContent(workflow)
+
 	// Create prompt
 	prompt := Prompt{
 		Name:        commandName,
@@ -277,20 +278,44 @@ func (h *Handler) registerCommandPrompt(commandName string) error {
 		Arguments: []PromptArgument{
 			{
 				Name:        "user_input",
-				Description: "Optional user input to guide the workflow",
+				Description: "User input to guide the workflow",
 				Required:    false,
 			},
 		},
 		Handler: func(args map[string]interface{}) (interface{}, error) {
+			// Extract user input
 			userInput := ""
 			if input, ok := args["user_input"].(string); ok {
 				userInput = input
 			}
 
-			// Build prompt message with workflow instructions
-			message := buildPromptMessage(commandName, workflow, userInput)
+			// Detect workspace context
+			wsContext := DetectWorkspaceContext()
+
+			// Prepare template data with enhanced metadata
+			templateData := TemplateData{
+				Arguments:     userInput,
+				CommandName:   commandName,
+				Timestamp:     time.Now(),
+				ProjectName:   wsContext.ProjectName,
+				FeatureName:   wsContext.FeatureName,
+				WorkspaceRoot: wsContext.Root,
+				Extra:         args,
+			}
+
+			// Process template with substitution and context
+			processedWorkflow, err := ProcessTemplateWithContext(workflow, templateData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to process template: %w", err)
+			}
+
+			// Build final message
+			message := fmt.Sprintf("# Technocrat %s Workflow\n\n%s",
+				strings.Title(commandName),
+				processedWorkflow)
 
 			return map[string]interface{}{
+				"description": fmt.Sprintf("Technocrat %s workflow", commandName),
 				"messages": []map[string]interface{}{
 					{
 						"role": "user",
@@ -350,28 +375,4 @@ func parseCommandTemplate(content string) (description string, workflow string) 
 	}
 
 	return description, workflow
-}
-
-// buildPromptMessage constructs the prompt message for the AI
-func buildPromptMessage(commandName, workflow, userInput string) string {
-	var sb strings.Builder
-
-	// Capitalize first letter of command name
-	capitalizedName := commandName
-	if len(commandName) > 0 {
-		capitalizedName = strings.ToUpper(commandName[:1]) + commandName[1:]
-	}
-	sb.WriteString(fmt.Sprintf("# Technocrat %s Workflow\n\n", capitalizedName))
-
-	if userInput != "" {
-		sb.WriteString("## User Input\n\n")
-		sb.WriteString(userInput)
-		sb.WriteString("\n\n")
-		sb.WriteString("---\n\n")
-	}
-
-	sb.WriteString("## Workflow Instructions\n\n")
-	sb.WriteString(workflow)
-
-	return sb.String()
 }

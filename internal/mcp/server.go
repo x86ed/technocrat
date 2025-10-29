@@ -370,6 +370,55 @@ func (s *StdioServer) handleStdioRequest(request map[string]interface{}) map[str
 				"tools": tools,
 			},
 		}
+	case "tools/call":
+		params, ok := request["params"].(map[string]interface{})
+		if !ok {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32602,
+					"message": "Invalid params",
+				},
+			}
+		}
+
+		name, ok := params["name"].(string)
+		if !ok {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32602,
+					"message": "Missing tool name",
+				},
+			}
+		}
+
+		// Extract arguments if provided
+		var args map[string]interface{}
+		if argsInterface, exists := params["arguments"]; exists {
+			if argsMap, ok := argsInterface.(map[string]interface{}); ok {
+				args = argsMap
+			}
+		}
+
+		result, err := s.handler.CallTool(name, args)
+		if err != nil {
+			return map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      id,
+				"error": map[string]interface{}{
+					"code":    -32603,
+					"message": fmt.Sprintf("Internal error: %v", err),
+				},
+			}
+		}
+		return map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      id,
+			"result":  result,
+		}
 	case "resources/list":
 		resources := s.handler.ListResources()
 		return map[string]interface{}{

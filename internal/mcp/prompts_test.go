@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -9,14 +11,14 @@ func TestRegisterCommandPrompts(t *testing.T) {
 
 	// Check that command prompts were registered
 	expectedPrompts := []string{
-		"tchncrt.spec",
-		"tchncrt.plan",
-		"tchncrt.tasks",
-		"tchncrt.implement",
-		"tchncrt.constitution",
-		"tchncrt.checklist",
-		"tchncrt.clarify",
-		"tchncrt.analyze",
+		"spec",
+		"plan",
+		"tasks",
+		"implement",
+		"constitution",
+		"checklist",
+		"clarify",
+		"analyze",
 	}
 
 	prompts := h.ListPrompts()
@@ -43,7 +45,7 @@ func TestPromptExecution(t *testing.T) {
 	}{
 		{
 			name:       "spec prompt with user input",
-			promptName: "tchncrt.spec",
+			promptName: "spec",
 			args: map[string]interface{}{
 				"user_input": "Create a login feature with OAuth support",
 			},
@@ -51,19 +53,19 @@ func TestPromptExecution(t *testing.T) {
 		},
 		{
 			name:       "spec prompt without user input",
-			promptName: "tchncrt.spec",
+			promptName: "spec",
 			args:       map[string]interface{}{},
 			wantError:  false,
 		},
 		{
 			name:       "plan prompt",
-			promptName: "tchncrt.plan",
+			promptName: "plan",
 			args:       map[string]interface{}{},
 			wantError:  false,
 		},
 		{
 			name:       "nonexistent prompt",
-			promptName: "tchncrt.nonexistent",
+			promptName: "nonexistent",
 			args:       map[string]interface{}{},
 			wantError:  true,
 		},
@@ -118,7 +120,7 @@ func TestPromptExecution(t *testing.T) {
 func TestPromptContentStructure(t *testing.T) {
 	h := NewHandler()
 
-	result, err := h.GetPrompt("tchncrt.spec", map[string]interface{}{
+	result, err := h.GetPrompt("spec", map[string]interface{}{
 		"user_input": "Add user authentication",
 	})
 	if err != nil {
@@ -177,13 +179,22 @@ More content here.
 }
 
 func TestBuildPromptMessage(t *testing.T) {
-	workflow := "Step 1: Do something\nStep 2: Do something else"
+	// Test the new template-based message building
+	workflow := `## Instructions
+
+{{if .Arguments}}
+User provided: {{.Arguments}}
+{{end}}
+
+Step 1: Do something
+Step 2: Do something else`
 
 	tests := []struct {
 		name        string
 		commandName string
 		userInput   string
 		wantContain []string
+		notContain  []string
 	}{
 		{
 			name:        "with user input",
@@ -192,11 +203,11 @@ func TestBuildPromptMessage(t *testing.T) {
 			wantContain: []string{
 				"Technocrat",
 				"Spec",
-				"User Input",
-				"Create login feature",
-				"Workflow Instructions",
+				"User provided: Create login feature",
 				"Step 1",
+				"Step 2",
 			},
+			notContain: []string{},
 		},
 		{
 			name:        "without user input",
@@ -205,25 +216,43 @@ func TestBuildPromptMessage(t *testing.T) {
 			wantContain: []string{
 				"Technocrat",
 				"Plan",
-				"Workflow Instructions",
 				"Step 1",
+				"Step 2",
+			},
+			notContain: []string{
+				"User provided:",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			message := buildPromptMessage(tt.commandName, workflow, tt.userInput)
+			// Prepare workflow with template substitution
+			templateData := TemplateData{
+				Arguments:   tt.userInput,
+				CommandName: tt.commandName,
+			}
+
+			processedWorkflow, err := ProcessTemplate(workflow, templateData)
+			if err != nil {
+				t.Fatalf("Failed to process template: %v", err)
+			}
+
+			// Build final message
+			message := fmt.Sprintf("# Technocrat %s Workflow\n\n%s",
+				strings.Title(tt.commandName),
+				processedWorkflow)
 
 			for _, want := range tt.wantContain {
 				if !contains(message, want) {
-					t.Errorf("Expected message to contain '%s', but it doesn't", want)
+					t.Errorf("Expected message to contain '%s', but it doesn't.\nMessage:\n%s", want, message)
 				}
 			}
 
-			// If no user input, should not contain "User Input" section
-			if tt.userInput == "" && contains(message, "## User Input") {
-				t.Error("Message should not contain User Input section when no input provided")
+			for _, notWant := range tt.notContain {
+				if contains(message, notWant) {
+					t.Errorf("Expected message NOT to contain '%s', but it does.\nMessage:\n%s", notWant, message)
+				}
 			}
 		})
 	}

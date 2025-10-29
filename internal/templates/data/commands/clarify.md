@@ -7,12 +7,17 @@ scripts:
 # Clarify
 
 ## User Input
+{{if .Arguments}}
 
 ```text
-$ARGUMENTS
+{{.Arguments}}
 ```
 
-You **MUST** consider the user input before proceeding (if not empty).
+You **MUST** consider the user input before proceeding.
+{{else}}
+
+_No specific areas to clarify provided. Analyze entire specification for ambiguities._
+{{end}}
 
 ## Outline
 
