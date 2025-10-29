@@ -5,6 +5,7 @@ The Technocrat MCP (Model Context Protocol) server provides a standardized HTTP 
 ## What is MCP?
 
 The Model Context Protocol is an open standard that enables AI assistants to:
+
 - **Discover and call tools** (functions the AI can execute)
 - **Read resources** (access to project context, specs, plans)
 - **Use prompts** (predefined conversation starters)
@@ -58,6 +59,7 @@ curl http://localhost:8080/health
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "status": "ok"
@@ -90,6 +92,7 @@ curl -X POST http://localhost:8080/mcp/v1/initialize \
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "protocolVersion": "2024-11-05",
@@ -122,6 +125,7 @@ curl http://localhost:8080/mcp/v1/tools/list
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "tools": [
@@ -169,6 +173,7 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "content": [
@@ -180,7 +185,7 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 }
 ```
 
-**Example: List Features**
+#### Example: List Features
 
 ```bash
 curl -X POST http://localhost:8080/mcp/v1/tools/call \
@@ -192,6 +197,7 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 ```
 
 **Response:**
+
 ```json
 {
   "content": [
@@ -220,6 +226,7 @@ curl http://localhost:8080/mcp/v1/resources/list
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "resources": [
@@ -254,6 +261,7 @@ curl -X POST http://localhost:8080/mcp/v1/resources/read \
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "contents": [
@@ -266,7 +274,7 @@ curl -X POST http://localhost:8080/mcp/v1/resources/read \
 }
 ```
 
-**Example: Read Constitution**
+#### Example: Read Constitution
 
 ```bash
 curl -X POST http://localhost:8080/mcp/v1/resources/read \
@@ -293,6 +301,7 @@ curl http://localhost:8080/mcp/v1/prompts/list
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "prompts": [
@@ -340,6 +349,7 @@ curl -X POST http://localhost:8080/mcp/v1/prompts/get \
 ```
 
 **Response (200 OK):**
+
 ```json
 {
   "messages": [
@@ -497,7 +507,8 @@ Please review this before proceeding.
 {{else}}
 No existing specification found.
 {{end}}
-```
+
+```txt
 
 ### Conditional Rendering
 
@@ -550,6 +561,7 @@ Follow the standard implementation workflow.
 
 {{end}}
 {{if readPlan}}
+
 ## Implementation Plan
 
 ```markdown
@@ -558,6 +570,7 @@ Follow the standard implementation workflow.
 
 {{end}}
 {{if readTasks}}
+
 ## Tasks
 
 ```markdown
@@ -565,13 +578,15 @@ Follow the standard implementation workflow.
 ```
 
 {{end}}
+
 ## Instructions
 
 1. Review all context above
 2. {{if .FeatureName}}Implement feature: {{.FeatureName}}{{else}}Begin implementation{{end}}
 3. Follow the project constitution principles
 4. Test thoroughly before marking complete
-```
+
+```txt
 
 ### Creating Custom Prompts
 
@@ -615,11 +630,13 @@ go build -o technocrat ./cmd/technocrat
 ### Template Best Practices
 
 1. **Always provide fallbacks** for optional data:
+
    ```markdown
    {{if .Arguments}}{{.Arguments}}{{else}}No input provided{{end}}
    ```
 
 2. **Use conditional sections** to avoid empty blocks:
+
    ```markdown
    {{if readSpec}}
    ## Previous Spec
@@ -628,11 +645,13 @@ go build -o technocrat ./cmd/technocrat
    ```
 
 3. **Trim user input** to remove accidental whitespace:
+
    ```markdown
    {{trim .Arguments}}
    ```
 
 4. **Document available variables** in template comments:
+
    ```markdown
    <!-- Available: .Arguments, .ProjectName, .FeatureName, .WorkspaceRoot -->
    ```
@@ -753,6 +772,7 @@ case "my_prompt":
 ### Server won't start
 
 **"address already in use"**
+
 ```bash
 # Find process using port 8080
 lsof -i :8080

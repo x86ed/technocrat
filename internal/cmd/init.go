@@ -3,17 +3,13 @@ package cmd
 import (
 	"archive/zip"
 	"bufio"
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"technocrat/internal/editor"
 	"technocrat/internal/installer"
@@ -774,187 +770,6 @@ vendor/
 	if tracker != nil {
 		tracker.Complete("extract", "Ready")
 	}
-
-	return nil
-}
-
-func downloadAndExtractTemplate(projectPath, aiAssistant, scriptType string, inCurrentDir bool, tracker *ui.StepTracker) error {
-	// GitHub repository details
-	repoOwner := "x86ed"
-	repoName := "technocrat"
-
-	// Start download step
-	if tracker != nil {
-		tracker.Start("download", "Fetching latest release...")
-	}
-
-	// Get GitHub token from flag or environment
-	// Check CLI flag first, then GITHUB_TOKEN, then GH_TOKEN
-	token := githubToken
-	if token == "" {
-		token = os.Getenv("GH_TOKEN")
-	}
-	if token == "" {
-		token = os.Getenv("GITHUB_TOKEN")
-	}
-
-	// Fetch latest release
-	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", repoOwner, repoName)
-	req, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	// Configure HTTP client based on skip-tls flag
-	client := &http.Client{Timeout: 30 * time.Second}
-	if skipTLS {
-		fmt.Fprintln(os.Stderr, "  ⚠ Warning: Skipping TLS verification (not recommended)")
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-	} else {
-		// Use system certificate pool for better SSL handling
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12},
-		}
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		if debug {
-			fmt.Fprintf(os.Stderr, "  Debug: Failed to fetch release info: %v\n", err)
-			fmt.Fprintf(os.Stderr, "  Debug: Request URL: %s\n", apiURL)
-		}
-		return fmt.Errorf("failed to fetch release info: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if debug {
-			fmt.Fprintf(os.Stderr, "  Debug: GitHub API returned status %d\n", resp.StatusCode)
-			fmt.Fprintf(os.Stderr, "  Debug: Response headers: %v\n", resp.Header)
-			body, _ := io.ReadAll(resp.Body)
-			fmt.Fprintf(os.Stderr, "  Debug: Response body (truncated): %s\n", string(body[:min(400, len(body))]))
-		}
-		return fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
-	}
-
-	var releaseData struct {
-		TagName string `json:"tag_name"`
-		Assets  []struct {
-			Name               string `json:"name"`
-			BrowserDownloadURL string `json:"browser_download_url"`
-			Size               int    `json:"size"`
-		} `json:"assets"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&releaseData); err != nil {
-		return fmt.Errorf("failed to parse release data: %w", err)
-	}
-
-	// Find matching asset
-	pattern := fmt.Sprintf("technocrat-template-%s-%s", aiAssistant, scriptType)
-	var downloadURL string
-	var assetName string
-	var assetSize int
-
-	for _, asset := range releaseData.Assets {
-		if strings.Contains(asset.Name, pattern) && strings.HasSuffix(asset.Name, ".zip") {
-			downloadURL = asset.BrowserDownloadURL
-			assetName = asset.Name
-			assetSize = asset.Size
-			break
-		}
-	}
-
-	if downloadURL == "" {
-		if debug {
-			fmt.Fprintf(os.Stderr, "  Debug: Available assets:\n")
-			for _, asset := range releaseData.Assets {
-				fmt.Fprintf(os.Stderr, "    - %s\n", asset.Name)
-			}
-			fmt.Fprintf(os.Stderr, "  Debug: Looking for pattern: %s\n", pattern)
-		}
-		return fmt.Errorf("no matching template found for %s with script type %s", aiAssistant, scriptType)
-	}
-
-	fmt.Fprintf(os.Stderr, "  ✓ Found template: %s (%s bytes)\n", assetName, formatBytes(assetSize))
-	fmt.Fprintf(os.Stderr, "  ✓ Release: %s\n", releaseData.TagName)
-
-	// Download template
-	if tracker != nil {
-		tracker.Start("download", fmt.Sprintf("Downloading %s...", assetName))
-	}
-	downloadReq, err := http.NewRequest("GET", downloadURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create download request: %w", err)
-	}
-
-	if token != "" {
-		downloadReq.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	downloadResp, err := client.Do(downloadReq)
-	if err != nil {
-		if debug {
-			fmt.Fprintf(os.Stderr, "  Debug: Download failed: %v\n", err)
-			fmt.Fprintf(os.Stderr, "  Debug: Download URL: %s\n", downloadURL)
-		}
-		return fmt.Errorf("failed to download template: %w", err)
-	}
-	defer downloadResp.Body.Close()
-
-	if downloadResp.StatusCode != http.StatusOK {
-		if debug {
-			fmt.Fprintf(os.Stderr, "  Debug: Download status: %d\n", downloadResp.StatusCode)
-			fmt.Fprintf(os.Stderr, "  Debug: Response headers: %v\n", downloadResp.Header)
-		}
-		return fmt.Errorf("download failed with status %d", downloadResp.StatusCode)
-	}
-
-	// Save to temporary file
-	tempFile, err := os.CreateTemp("", "technocrat-template-*.zip")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	tempPath := tempFile.Name()
-	defer os.Remove(tempPath)
-
-	// Copy with progress
-	written, err := io.Copy(tempFile, downloadResp.Body)
-	if err != nil {
-		tempFile.Close()
-		return fmt.Errorf("failed to save template: %w", err)
-	}
-	tempFile.Close()
-
-	if tracker != nil {
-		tracker.Complete("download", formatBytes(int(written)))
-	}
-	fmt.Fprintf(os.Stderr, "  ✓ Downloaded: %s (%s)\n", assetName, formatBytes(int(written)))
-
-	// Extract template
-	if tracker != nil {
-		tracker.Start("extract", "Unpacking archive...")
-	}
-
-	// Extract template with detailed tracking
-	extractedCount, extractedSize, err := extractZipWithStats(tempPath, projectPath, inCurrentDir, tracker)
-	if err != nil {
-		if tracker != nil {
-			tracker.Error("extract", err.Error())
-		}
-		return fmt.Errorf("failed to extract template: %w", err)
-	}
-
-	if tracker != nil {
-		tracker.Complete("extract", fmt.Sprintf("%d files, %s", extractedCount, formatBytes(extractedSize)))
-	}
-	fmt.Fprintf(os.Stderr, "  ✓ Template extracted: %d files (%s)\n", extractedCount, formatBytes(extractedSize))
 
 	return nil
 }

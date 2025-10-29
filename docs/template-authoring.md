@@ -5,6 +5,7 @@ This guide explains how to create and customize prompt templates for the Technoc
 ## Overview
 
 Technocrat uses Go's `text/template` engine to generate dynamic prompts. Templates combine:
+
 - **User input** - Text provided when invoking the prompt
 - **Project metadata** - Auto-detected workspace information
 - **Feature artifacts** - Existing spec, plan, and task files
@@ -54,6 +55,7 @@ Hello, user!
 Every template has access to these variables:
 
 #### `.Arguments` (string)
+
 User-provided input text.
 
 ```markdown
@@ -61,11 +63,13 @@ User requested: {{.Arguments}}
 ```
 
 **Example values:**
+
 - `"Create REST API endpoints for user management"`
 - `"Focus on security testing"`
 - `""` (empty if no input)
 
 #### `.CommandName` (string)
+
 The name of the command being executed.
 
 ```markdown
@@ -75,6 +79,7 @@ Executing {{.CommandName}} workflow...
 **Example values:** `"spec"`, `"plan"`, `"implement"`, `"analyze"`
 
 #### `.Timestamp` (time.Time)
+
 Current date/time when the prompt is generated.
 
 ```markdown
@@ -86,6 +91,7 @@ Generated on: {{.Timestamp.Format "2006-01-02 15:04:05"}}
 Auto-detected from your workspace:
 
 #### `.ProjectName` (string)
+
 Project name from directory or constitution.
 
 ```markdown
@@ -93,11 +99,13 @@ Project name from directory or constitution.
 ```
 
 **Detection order:**
+
 1. First heading in `memory/constitution.md` (if not "Constitution", "About", etc.)
 2. Text after "## Project Name" heading in constitution
 3. Workspace directory name
 
 #### `.FeatureName` (string)
+
 Current feature name if in a `specs/<feature>/` directory.
 
 ```markdown
@@ -109,6 +117,7 @@ Working on: {{.FeatureName}}
 **Example:** If you're in `/project/specs/user-auth/`, `.FeatureName` = `"user-auth"`
 
 #### `.WorkspaceRoot` (string)
+
 Absolute path to the workspace root.
 
 ```markdown
@@ -120,6 +129,7 @@ Workspace: {{.WorkspaceRoot}}
 ### Extra Data
 
 #### `.Extra` (map[string]interface{})
+
 Additional arguments passed to the prompt (advanced usage).
 
 ```markdown
@@ -133,24 +143,28 @@ Custom: {{.Extra.customField}}
 ### String Functions
 
 #### `upper` - Convert to uppercase
+
 ```markdown
 {{upper .CommandName}}
 <!-- SPEC -->
 ```
 
 #### `lower` - Convert to lowercase
+
 ```markdown
 {{lower .ProjectName}}
 <!-- technosync -->
 ```
 
 #### `title` - Convert to title case
+
 ```markdown
 {{title .FeatureName}}
 <!-- User-Authentication -->
 ```
 
 #### `trim` - Remove leading/trailing whitespace
+
 ```markdown
 {{trim .Arguments}}
 <!-- Removes accidental spaces from user input -->
@@ -159,12 +173,14 @@ Custom: {{.Extra.customField}}
 ### Date/Time Functions
 
 #### `now` - Get current time
+
 ```markdown
 Generated: {{now.Format "Monday, January 2, 2006"}}
 <!-- Generated: Tuesday, October 28, 2025 -->
 ```
 
 #### `.Timestamp.Format` - Format timestamp
+
 ```markdown
 Date: {{.Timestamp.Format "2006-01-02"}}
 Time: {{.Timestamp.Format "15:04:05"}}
@@ -172,6 +188,7 @@ ISO: {{.Timestamp.Format "2006-01-02T15:04:05Z07:00"}}
 ```
 
 **Common formats:**
+
 - `"2006-01-02"` → `2025-10-28`
 - `"15:04:05"` → `14:30:00`
 - `"Jan 2, 2006"` → `Oct 28, 2025`
@@ -182,6 +199,7 @@ ISO: {{.Timestamp.Format "2006-01-02T15:04:05Z07:00"}}
 Read existing artifacts from the current feature directory:
 
 #### `readSpec` - Read spec.md
+
 ```markdown
 {{if readSpec}}
 ## Existing Specification
@@ -189,7 +207,9 @@ Read existing artifacts from the current feature directory:
 ```markdown
 {{readSpec}}
 ```
+
 {{end}}
+
 ```
 
 #### `readPlan` - Read plan.md
@@ -201,6 +221,7 @@ Previous implementation plan:
 ```
 
 #### `readTasks` - Read tasks.md
+
 ```markdown
 {{if readTasks}}
 Current tasks:
@@ -209,12 +230,14 @@ Current tasks:
 ```
 
 #### `readFile` - Read any file
+
 ```markdown
 {{readFile "notes.md"}}
 {{readFile "research/api-design.md"}}
 ```
 
 **Note:** These functions return empty string if:
+
 - Not in a feature directory (`specs/<feature>/`)
 - File doesn't exist
 - File can't be read
@@ -224,6 +247,7 @@ Current tasks:
 ### Conditionals
 
 #### Basic if/else
+
 ```markdown
 {{if .Arguments}}
 User input: {{.Arguments}}
@@ -233,6 +257,7 @@ No input provided.
 ```
 
 #### Check for non-empty strings
+
 ```markdown
 {{if .FeatureName}}
 Feature: {{.FeatureName}}
@@ -240,6 +265,7 @@ Feature: {{.FeatureName}}
 ```
 
 #### Multiple conditions
+
 ```markdown
 {{if .ProjectName}}
 Project: {{.ProjectName}}
@@ -250,6 +276,7 @@ Project: {{.ProjectName}}
 ```
 
 #### Check function results
+
 ```markdown
 {{if readSpec}}
 A spec exists for this feature.
@@ -354,6 +381,7 @@ The following specification should guide your implementation:
 
 {{end}}
 {{if readPlan}}
+
 ## Implementation Plan
 
 Follow this plan:
@@ -364,6 +392,7 @@ Follow this plan:
 
 {{end}}
 {{if readTasks}}
+
 ## Task Checklist
 
 ```markdown
@@ -373,6 +402,7 @@ Follow this plan:
 {{else}}
 **Note**: No tasks file found. Create one with `/tasks` first.
 {{end}}
+
 ```
 
 ### Example 4: Conditional Workflow
@@ -441,11 +471,13 @@ description: "Report with formatted metadata"
 ### 1. Always Provide Fallbacks
 
 ❌ **Bad:**
+
 ```markdown
 User input: {{.Arguments}}
 ```
 
 ✅ **Good:**
+
 ```markdown
 {{if .Arguments}}
 User input: {{.Arguments}}
@@ -457,6 +489,7 @@ _No specific input provided._
 ### 2. Check Before Reading Files
 
 ❌ **Bad:**
+
 ```markdown
 ## Specification
 
@@ -464,6 +497,7 @@ _No specific input provided._
 ```
 
 ✅ **Good:**
+
 ```markdown
 {{if readSpec}}
 ## Specification
@@ -475,11 +509,13 @@ _No specific input provided._
 ### 3. Trim User Input
 
 ❌ **Bad:**
+
 ```markdown
 Task: {{.Arguments}}
 ```
 
 ✅ **Good:**
+
 ```markdown
 Task: {{trim .Arguments}}
 ```
@@ -487,6 +523,7 @@ Task: {{trim .Arguments}}
 ### 4. Use Descriptive Section Headers
 
 ❌ **Bad:**
+
 ```markdown
 {{if .Arguments}}
 {{.Arguments}}
@@ -494,6 +531,7 @@ Task: {{trim .Arguments}}
 ```
 
 ✅ **Good:**
+
 ```markdown
 {{if .Arguments}}
 ## User Guidance
@@ -529,6 +567,7 @@ description: "My custom workflow"
 ### 6. Test Edge Cases
 
 Test your template with:
+
 - ✅ User input provided
 - ✅ No user input (empty)
 - ✅ In feature directory
@@ -592,6 +631,7 @@ Create a new specification.
 **Cause:** Syntax error in template (unclosed block, typo)
 
 **Fix:** Check for:
+
 - Matching `{{if}}...{{end}}` pairs
 - Correct function names
 - Proper variable access (`.FieldName` not `FieldName`)
@@ -601,11 +641,13 @@ Create a new specification.
 **Problem:** Template renders but shows nothing
 
 **Causes:**
+
 1. All conditionals are false
 2. Variables are empty
 3. File reading returns nothing
 
 **Fix:** Add fallback messages:
+
 ```markdown
 {{if .Arguments}}
 {{.Arguments}}
@@ -621,6 +663,7 @@ _DEBUG: No arguments provided_
 **Cause:** Variable doesn't exist or typo
 
 **Fix:** Check variable names (case-sensitive):
+
 - ✅ `.ProjectName`
 - ❌ `.projectName`
 - ❌ `.Project_Name`

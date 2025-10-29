@@ -307,7 +307,7 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 
 ## Project Structure
 
-```
+```sh
 technocrat/
 ├── cmd/
 │   └── technocrat/          # Main CLI entry point
@@ -353,7 +353,7 @@ technocrat/
 - Go 1.24 or later
 - Git
 
-### Building from Source
+### Build from Source
 
 ```bash
 # Clone repository

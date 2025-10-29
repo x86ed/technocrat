@@ -7,6 +7,7 @@ scripts:
 # Impliment
 
 {{if .ProjectName}}
+
 ## Project Context
 
 **Project**: {{.ProjectName}}
@@ -28,6 +29,7 @@ _No specific implementation guidance provided. Follow standard workflow._
 {{end}}
 
 {{if readTasks}}
+
 ## Current Tasks
 
 The following tasks have been defined for this feature:
@@ -37,6 +39,7 @@ The following tasks have been defined for this feature:
 ```
 
 {{end}}
+
 ## Outline
 
 1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").

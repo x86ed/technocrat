@@ -107,14 +107,14 @@ func getProjectNameFromConstitution(workspaceRoot string) string {
 	}
 
 	lines := strings.Split(string(content), "\n")
-	
+
 	// First pass: Look for "Project Name" heading with value on next line
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		// Match headings like "## Project Name" (not "# My Project Name")
-		if (strings.HasPrefix(line, "## Project") || 
-		    strings.ToLower(line) == "## project name") {
+		if strings.HasPrefix(line, "## Project") ||
+			strings.ToLower(line) == "## project name" {
 			// Find next non-empty line that's not a heading
 			for j := i + 1; j < len(lines); j++ {
 				nextLine := strings.TrimSpace(lines[j])
@@ -124,7 +124,7 @@ func getProjectNameFromConstitution(workspaceRoot string) string {
 			}
 		}
 	}
-	
+
 	// Second pass: Check if the very first heading is the project name itself
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -132,9 +132,9 @@ func getProjectNameFromConstitution(workspaceRoot string) string {
 			heading := strings.TrimPrefix(line, "# ")
 			// Avoid generic headings like "Constitution", "About", etc.
 			lower := strings.ToLower(heading)
-			if !strings.Contains(lower, "constitution") && 
-			   !strings.Contains(lower, "about") &&
-			   !strings.Contains(lower, "overview") {
+			if !strings.Contains(lower, "constitution") &&
+				!strings.Contains(lower, "about") &&
+				!strings.Contains(lower, "overview") {
 				return heading
 			}
 			// Stop after first heading

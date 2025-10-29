@@ -27,6 +27,7 @@ scripts:
 **Metaphor**: If your spec is code written in English, the checklist is its unit test suite. You're testing whether the requirements are well-written, complete, unambiguous, and ready for implementation - NOT whether the implementation works.
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

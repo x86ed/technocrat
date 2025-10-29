@@ -28,12 +28,12 @@ func ProcessTemplate(workflowContent string, data TemplateData) (string, error) 
 		Funcs(templateFuncs()).
 		Parse(workflowContent)
 	if err != nil {
-		return "", enhanceTemplateError("parse", err, workflowContent)
+		return "", enhanceTemplateError("parse", err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", enhanceTemplateError("execute", err, workflowContent)
+		return "", enhanceTemplateError("execute", err)
 	}
 
 	return buf.String(), nil
@@ -77,7 +77,7 @@ func templateFuncs() template.FuncMap {
 // makeTemplateFuncsWithContext creates template functions that have access to workspace context
 func makeTemplateFuncsWithContext(workspaceRoot, featureName string) template.FuncMap {
 	funcs := templateFuncs()
-	
+
 	// Add feature file reading functions
 	funcs["readSpec"] = func() string {
 		return ReadFeatureFile(workspaceRoot, featureName, "spec.md")
@@ -91,7 +91,7 @@ func makeTemplateFuncsWithContext(workspaceRoot, featureName string) template.Fu
 	funcs["readFile"] = func(filename string) string {
 		return ReadFeatureFile(workspaceRoot, featureName, filename)
 	}
-	
+
 	return funcs
 }
 
@@ -100,26 +100,26 @@ func makeTemplateFuncsWithContext(workspaceRoot, featureName string) template.Fu
 func ProcessTemplateWithContext(workflowContent string, data TemplateData) (string, error) {
 	// Create template with context-aware functions
 	funcs := makeTemplateFuncsWithContext(data.WorkspaceRoot, data.FeatureName)
-	
+
 	tmpl, err := template.New("workflow").
 		Funcs(funcs).
 		Parse(workflowContent)
 	if err != nil {
-		return "", enhanceTemplateError("parse", err, workflowContent)
+		return "", enhanceTemplateError("parse", err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", enhanceTemplateError("execute", err, workflowContent)
+		return "", enhanceTemplateError("execute", err)
 	}
 
 	return buf.String(), nil
 }
 
 // enhanceTemplateError provides more context for template errors
-func enhanceTemplateError(phase string, err error, template string) error {
+func enhanceTemplateError(phase string, err error) error {
 	errMsg := err.Error()
-	
+
 	// Extract line number if present
 	lineInfo := ""
 	if strings.Contains(errMsg, ":") {
@@ -128,15 +128,15 @@ func enhanceTemplateError(phase string, err error, template string) error {
 			lineInfo = " at " + parts[1]
 		}
 	}
-	
+
 	// Add helpful hints based on error type
 	hint := getErrorHint(errMsg)
-	
+
 	baseMsg := fmt.Sprintf("template %s failed%s: %v", phase, lineInfo, err)
 	if hint != "" {
 		return fmt.Errorf("%s\n\nHint: %s", baseMsg, hint)
 	}
-	
+
 	return fmt.Errorf("%s", baseMsg)
 }
 

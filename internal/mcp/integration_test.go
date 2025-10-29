@@ -9,10 +9,10 @@ import (
 // of user input being substituted into command templates
 func TestTemplateSubstitutionIntegration(t *testing.T) {
 	tests := []struct {
-		name           string
-		promptName     string
-		userInput      string
-		shouldContain  []string
+		name             string
+		promptName       string
+		userInput        string
+		shouldContain    []string
 		shouldNotContain []string
 	}{
 		{

@@ -7,6 +7,7 @@ scripts:
 # Tasks
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

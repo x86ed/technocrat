@@ -4,6 +4,7 @@ description: Create or update the project constitution from interactive or provi
 # Constitution
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

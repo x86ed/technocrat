@@ -7,6 +7,7 @@ scripts:
 # Analyze
 
 {{if .ProjectName}}
+
 ## Project Context
 
 **Project**: {{.ProjectName}}
@@ -14,6 +15,7 @@ scripts:
 {{end}}
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text
@@ -27,6 +29,7 @@ _No specific analysis focus provided. Perform comprehensive analysis._
 {{end}}
 
 {{if readSpec}}
+
 ## Current Specification
 
 ```markdown
@@ -35,6 +38,7 @@ _No specific analysis focus provided. Perform comprehensive analysis._
 
 {{end}}
 {{if readPlan}}
+
 ## Current Plan
 
 ```markdown
@@ -43,6 +47,7 @@ _No specific analysis focus provided. Perform comprehensive analysis._
 
 {{end}}
 {{if readTasks}}
+
 ## Current Tasks
 
 ```markdown
@@ -50,6 +55,7 @@ _No specific analysis focus provided. Perform comprehensive analysis._
 ```
 
 {{end}}
+
 ## Goal
 
 Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/tasks` has successfully produced a complete `tasks.md`.

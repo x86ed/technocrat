@@ -7,6 +7,7 @@ agent_command: technocrat update-agent-context __AGENT__
 # Plan
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

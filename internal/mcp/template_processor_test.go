@@ -147,7 +147,7 @@ You **MUST** consider the user input.
 			expectError: true,
 		},
 		{
-			name: "Extra arguments access",
+			name:    "Extra arguments access",
 			content: "Feature: {{index .Extra \"feature_name\"}}",
 			data: TemplateData{
 				Extra: map[string]interface{}{
@@ -217,8 +217,8 @@ func TestPrepareTemplateContent(t *testing.T) {
 			expected: "{{.Arguments}} and {{.Arguments}} again",
 		},
 		{
-			name: "Replace in markdown code block",
-			input: "```text\n$ARGUMENTS\n```",
+			name:     "Replace in markdown code block",
+			input:    "```text\n$ARGUMENTS\n```",
 			expected: "```text\n{{.Arguments}}\n```",
 		},
 		{
@@ -297,9 +297,9 @@ _No specific user input provided._
 You are updating the project constitution at ` + "`/memory/constitution.md`" + `.`
 
 	tests := []struct {
-		name      string
-		arguments string
-		contains  []string
+		name        string
+		arguments   string
+		contains    []string
 		notContains []string
 	}{
 		{

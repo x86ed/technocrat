@@ -6,6 +6,7 @@ command: technocrat create-feature --json {ARGS}
 # Spec
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

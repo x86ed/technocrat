@@ -7,6 +7,7 @@ scripts:
 # Clarify
 
 ## User Input
+
 {{if .Arguments}}
 
 ```text

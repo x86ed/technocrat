@@ -7,76 +7,76 @@ import (
 
 func TestEnhancedErrorMessages(t *testing.T) {
 	tests := []struct {
-		name           string
-		template       string
-		data           TemplateData
-		expectError    bool
-		errorContains  []string
-		hintContains   string
+		name          string
+		template      string
+		data          TemplateData
+		expectError   bool
+		errorContains []string
+		hintContains  string
 	}{
 		{
-			name:     "Unclosed if block",
-			template: `{{if .Arguments}}Some text`,
-			data:     TemplateData{Arguments: "test"},
-			expectError: true,
+			name:          "Unclosed if block",
+			template:      `{{if .Arguments}}Some text`,
+			data:          TemplateData{Arguments: "test"},
+			expectError:   true,
 			errorContains: []string{"template", "parse", "failed"},
-			hintContains: "{{if}}",
+			hintContains:  "{{if}}",
 		},
 		{
-			name:     "Unknown function",
-			template: `{{unknownFunc .Arguments}}`,
-			data:     TemplateData{Arguments: "test"},
-			expectError: true,
+			name:          "Unknown function",
+			template:      `{{unknownFunc .Arguments}}`,
+			data:          TemplateData{Arguments: "test"},
+			expectError:   true,
 			errorContains: []string{"template", "failed"},
-			hintContains: "Available functions",
+			hintContains:  "Available functions",
 		},
 		{
-			name:     "Unknown variable",
-			template: `{{.UnknownField}}`,
-			data:     TemplateData{Arguments: "test"},
-			expectError: true,
+			name:          "Unknown variable",
+			template:      `{{.UnknownField}}`,
+			data:          TemplateData{Arguments: "test"},
+			expectError:   true,
 			errorContains: []string{"template", "execute", "failed"},
-			hintContains: "Available variables",
+			hintContains:  "Available variables",
 		},
 		{
-			name:     "Unclosed action",
-			template: `{{.Arguments`,
-			data:     TemplateData{Arguments: "test"},
-			expectError: true,
+			name:          "Unclosed action",
+			template:      `{{.Arguments`,
+			data:          TemplateData{Arguments: "test"},
+			expectError:   true,
 			errorContains: []string{"template", "parse", "failed"},
-			hintContains: "Missing closing braces",
+			hintContains:  "Missing closing braces",
 		},
 		{
-			name:     "Wrong bracket type",
-			template: `<.Arguments>`,
-			data:     TemplateData{Arguments: "test"},
+			name:        "Wrong bracket type",
+			template:    `<.Arguments>`,
+			data:        TemplateData{Arguments: "test"},
 			expectError: false, // This is actually valid text, not a template
 		},
 		{
-			name:     "Valid template",
-			template: `{{.Arguments}}`,
-			data:     TemplateData{Arguments: "test"},
+			name:        "Valid template",
+			template:    `{{.Arguments}}`,
+			data:        TemplateData{Arguments: "test"},
 			expectError: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ProcessTemplate(tt.template, tt.data)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got none")
 					return
 				}
-				
+
 				errMsg := err.Error()
 				for _, expected := range tt.errorContains {
 					if !strings.Contains(errMsg, expected) {
 						t.Errorf("Error message should contain %q, got: %s", expected, errMsg)
 					}
 				}
-				
+
 				if tt.hintContains != "" && !strings.Contains(errMsg, tt.hintContains) {
 					t.Errorf("Error hint should contain %q, got: %s", tt.hintContains, errMsg)
 				}
@@ -126,11 +126,11 @@ func TestErrorHints(t *testing.T) {
 			expectedHint: "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hint := getErrorHint(tt.errorMsg)
-			
+
 			if tt.expectedHint == "" {
 				if hint != "" {
 					t.Errorf("Expected no hint but got: %s", hint)
@@ -170,11 +170,11 @@ func TestProcessTemplateWithContextErrors(t *testing.T) {
 			expectError: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ProcessTemplateWithContext(tt.template, tt.data)
-			
+
 			if tt.expectError && err == nil {
 				t.Error("Expected error but got none")
 			}
@@ -189,26 +189,26 @@ func TestErrorMessageFormat(t *testing.T) {
 	// Test that error messages are well-formatted
 	template := `{{if .Arguments}}{{.UnknownField}}{{end}}`
 	data := TemplateData{Arguments: "test"}
-	
+
 	_, err := ProcessTemplate(template, data)
 	if err == nil {
 		t.Fatal("Expected error but got none")
 	}
-	
+
 	errMsg := err.Error()
-	
+
 	// Should contain phase information
 	if !strings.Contains(errMsg, "template") {
 		t.Error("Error should mention 'template'")
 	}
-	
+
 	// Should contain the actual error
 	if !strings.Contains(errMsg, "execute") || !strings.Contains(errMsg, "parse") {
 		if !strings.Contains(errMsg, "failed") {
 			t.Error("Error should contain phase information")
 		}
 	}
-	
+
 	// Check format is readable
 	lines := strings.Split(errMsg, "\n")
 	if len(lines) < 1 {

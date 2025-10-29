@@ -554,10 +554,10 @@ func TestRespondJSON(t *testing.T) {
 	server := NewServer(8080)
 
 	tests := []struct {
-		name         string
-		status       int
-		data         interface{}
-		expectError  bool
+		name        string
+		status      int
+		data        interface{}
+		expectError bool
 	}{
 		{
 			name:   "Valid JSON response",
@@ -994,7 +994,7 @@ func TestServerHTTPEndpoints(t *testing.T) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
-				t.Errorf("Expected status 200, got %d for %s %s", 
+				t.Errorf("Expected status 200, got %d for %s %s",
 					resp.StatusCode, endpoint.method, endpoint.path)
 			}
 		})
@@ -1004,11 +1004,11 @@ func TestServerHTTPEndpoints(t *testing.T) {
 // TestServerHTTPTimeouts tests that timeouts are configured correctly
 func TestServerHTTPTimeouts(t *testing.T) {
 	server := NewServer(8080)
-	
+
 	// Create a minimal HTTP server to test configuration
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", server.handleHealth)
-	
+
 	server.httpServer = &http.Server{
 		Addr:         ":8080",
 		Handler:      mux,
