@@ -1,0 +1,13 @@
+{
+    "chat.promptFilesRecommendations": {
+        "tchnncrt.constitution": true,
+        "tchnncrt.spec": true,
+        "tchnncrt.plan": true,
+        "tchnncrt.tasks": true,
+        "tchnncrt.implement": true
+    },
+    "chat.tools.terminal.autoApprove": {
+        ".tchnncrt/scripts/bash/": true,
+        ".tchnncrt/scripts/powershell/": true
+    }
+}

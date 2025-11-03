@@ -20,6 +20,9 @@ Technocrat is a Model Context Protocol (MCP) server implementation that provides
 - **Tools API**: Extensible tool system for executing operations
 - **Resources API**: Access to server resources and information
 - **Prompts API**: Pre-built prompts for common development tasks
+- **Dynamic Templates**: Go template engine with project metadata, feature artifacts, and custom functions
+- **Workspace Context**: Auto-detects project name, feature name, and workspace structure
+- **Artifact Reading**: Templates can access existing spec, plan, and task files
 
 ### Developer Experience
 
@@ -304,7 +307,7 @@ curl -X POST http://localhost:8080/mcp/v1/tools/call \
 
 ## Project Structure
 
-```
+```sh
 technocrat/
 ├── cmd/
 │   └── technocrat/          # Main CLI entry point
@@ -350,7 +353,7 @@ technocrat/
 - Go 1.24 or later
 - Git
 
-### Building from Source
+### Build from Source
 
 ```bash
 # Clone repository
@@ -538,6 +541,9 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 ## Related Documentation
 
 - **[AGENTS.md](AGENTS.md)** - Guide for adding new AI agent support
+- **[docs/mcp-server.md](docs/mcp-server.md)** - MCP Server API reference and setup
+- **[docs/template-authoring.md](docs/template-authoring.md)** - Guide to creating custom prompt templates
+- **[docs/commands-reference.md](docs/commands-reference.md)** - Complete CLI command reference
 - **[docs/](docs/)** - Full documentation with DocFX
 - **[templates/](templates/)** - Project and agent templates
 

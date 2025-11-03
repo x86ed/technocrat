@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	version    = "0.4.0"
+	version    = "0.2.0"
 	commit     = "unknown"
 	buildDir   = "bin"
 	binary     = "technocrat"
@@ -109,7 +109,7 @@ func build() {
 	cmd := exec.Command("go", "build",
 		"-ldflags", ldflags,
 		"-o", outputPath,
-		"./cmd/technocrat")
+		"./cmdgit")
 
 	cmd.Dir = wd
 	cmd.Stdout = os.Stdout

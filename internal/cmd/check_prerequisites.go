@@ -181,7 +181,7 @@ func outputJSON(paths *FeaturePaths, docs []string) error {
 	return encoder.Encode(output)
 }
 
-func outputText(paths *FeaturePaths, docs []string) error {
+func outputText(paths *FeaturePaths, _ []string) error {
 	fmt.Printf("FEATURE_DIR:%s\n", paths.FeatureDir)
 	fmt.Println("AVAILABLE_DOCS:")
 

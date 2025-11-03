@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"technocrat/internal/templates"
+
 	"github.com/spf13/cobra"
 )
 
@@ -315,28 +317,12 @@ func updateAgentFile(config AgentFileConfig, paths *FeaturePaths, planData *Plan
 	return updateExistingAgentFile(config, paths, planData)
 }
 
-// createNewAgentFile creates a new agent file from template
+// createNewAgentFile creates a new agent file from embedded template
 func createNewAgentFile(config AgentFileConfig, paths *FeaturePaths, planData *PlanData) error {
-	templatePath := filepath.Join(paths.RepoRoot, ".tchncrt", "templates", "agent-file-template.md")
-
-	// Check if template exists
-	info, err := os.Stat(templatePath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("template not found at %s", templatePath)
-	}
+	// Read template from embedded filesystem
+	content, err := templates.GetTemplate("agent-file-template.md")
 	if err != nil {
-		return fmt.Errorf("failed to stat template file: %w", err)
-	}
-
-	// Check if template is readable
-	if info.Mode().Perm()&0400 == 0 {
-		return fmt.Errorf("template file is not readable: %s", templatePath)
-	}
-
-	// Read template
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("failed to read template: %w", err)
+		return fmt.Errorf("failed to get agent template: %w", err)
 	}
 
 	// Warn if not in a git repository

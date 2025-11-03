@@ -3,9 +3,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
+
+	"technocrat/internal/templates"
 
 	"github.com/spf13/cobra"
 )
@@ -32,11 +32,10 @@ var setupPlanCmd = &cobra.Command{
 This command:
 - Verifies you're on a proper feature branch (XXX-feature-name format)
 - Ensures the feature directory exists
-- Copies the plan template if available
+- Creates plan.md from embedded template
 - Outputs the paths to feature files
 
-The plan template is located at .tchncrt/templates/plan-template.md
-If the template doesn't exist, an empty plan.md file will be created.`,
+The plan template is embedded in the technocrat binary.`,
 	RunE: runSetupPlan,
 }
 
@@ -63,9 +62,8 @@ func runSetupPlan(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create feature directory: %w", err)
 	}
 
-	// Copy plan template if it exists
-	templatePath := filepath.Join(paths.RepoRoot, ".tchncrt", "templates", "plan-template.md")
-	if err := copyPlanTemplate(templatePath, paths.ImplPlan); err != nil {
+	// Copy plan template from embedded filesystem
+	if err := copyPlanTemplate(paths.ImplPlan); err != nil {
 		return fmt.Errorf("failed to set up plan file: %w", err)
 	}
 
@@ -85,52 +83,24 @@ func runSetupPlan(cmd *cobra.Command, args []string) error {
 	return outputSetupPlanText(output)
 }
 
-// copyPlanTemplate copies the plan template to the implementation plan file
-func copyPlanTemplate(templatePath, destPath string) error {
-	// Check if template exists
-	if _, err := os.Stat(templatePath); err == nil {
-		// Template exists, copy it
-		if err := copyFile(templatePath, destPath); err != nil {
-			return fmt.Errorf("failed to copy template: %w", err)
-		}
+// copyPlanTemplate copies the plan template from embedded filesystem to the destination
+func copyPlanTemplate(destPath string) error {
+	// Get plan template from embedded filesystem
+	planData, err := templates.GetTemplate("plan-template.md")
+	if err != nil {
+		return fmt.Errorf("failed to get plan template: %w", err)
+	}
+
+	// Write template to destination
+	if err := os.WriteFile(destPath, planData, 0644); err != nil {
+		return fmt.Errorf("failed to write plan file: %w", err)
+	}
+
+	// Only print message if not in JSON mode
+	if !setupPlanJSON {
 		fmt.Printf("Copied plan template to %s\n", destPath)
-	} else {
-		// Template doesn't exist, create empty file
-		fmt.Fprintf(os.Stderr, "Warning: Plan template not found at %s\n", templatePath)
-		// Create a basic plan file (always create/overwrite like shell scripts)
-		file, err := os.Create(destPath)
-		if err != nil {
-			return fmt.Errorf("failed to create plan file: %w", err)
-		}
-		file.Close()
 	}
-
 	return nil
-}
-
-// copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
-	// Open source file
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	// Create destination file
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	// Copy contents
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return err
-	}
-
-	// Sync to ensure all data is written
-	return dstFile.Sync()
 }
 
 // formatBool converts a boolean to a string representation
